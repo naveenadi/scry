@@ -1,0 +1,14 @@
+docs/research/scry-luasql-build.md
+  h_2b676ab7b625d4 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "9f9961c66288e324f804f6d29bd656ac204f8223",
+  "prompts": {},
+  "humans": {
+    "h_2b676ab7b625d4": {
+      "author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
