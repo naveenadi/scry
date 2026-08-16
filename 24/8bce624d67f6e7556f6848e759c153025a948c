@@ -1,0 +1,14 @@
+docs/research/scry-terminal-backends.md
+  h_2b676ab7b625d4 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "248bce624d67f6e7556f6848e759c153025a948c",
+  "prompts": {},
+  "humans": {
+    "h_2b676ab7b625d4": {
+      "author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
