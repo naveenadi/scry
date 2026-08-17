@@ -39,3 +39,13 @@ luac.out
 *.x86_64
 *.hex
 
+# Prototype build artifacts
+scry
+libtermbox2.dylib
+luasql_sqlite3.so
+src/luasql.o
+src/ls_sqlite3.o
+vendor/LuaJIT/
+vendor/luasql/
+vendor/termbox2.h
+
