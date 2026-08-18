@@ -209,17 +209,52 @@ scry/
 connect(config)                  -- opens the Connection; starts the SSH tunnel if configured (see Design decisions)
 send_query(sql)                  -- begins execution of exactly ONE Statement (caller splits via sql.parse first); non-blocking, returns immediately. MUST perform only bounded, non-blocking work and return without waiting for server/network completion. Testable: an intentionally delayed query must not block the event loop.
 poll()                           -- called once per UI tick, the same tick that reads keyboard input; reports whether the query is still running. Driver-specific continuation state (e.g. MySQL socket readiness flags) is private to each adapter; poll() exposes only the common progress contract.
-state()                          -- current state-machine value (CONNECTING / READY / QUERYING / FETCHING / ERROR / CANCELED / CONNECTION_LOST)
+get_result()                    -- transitions a completed execution into result consumption. May perform driver-specific result initialization. MAY BLOCK for drivers whose result-fetch capability is synchronous (see capabilities()). The adapter must expose this through capabilities().
+state()                          -- current state-machine value (CONNECTING / READY / QUERYING / RESULT_READY / MATERIALIZING / FETCHING / ERROR / CANCELED / CONNECTION_LOST)
 error()                          -- last error, if any
 columns()                        -- column metadata for the current Result set; valid once state() reports columns are available
 next_row()                       -- pull the next row once columns() is available; nil = end of results (a real signal, not a row)
-close_result()                   -- release per-result resources and restore the Connection to READY state. MUST be called by every consumer when it's done with the row stream, even on early termination. Driver-specific cleanup: SQLite sqlite3_finalize (safe at any point); MySQL mysql_free_result (safe — mysql_store_result already pulled all data; connection is clean after free); Postgres PQclear followed by draining the complete PQgetResult chain until NULL (required — PQclear alone leaves unread results on the connection). The adapter handles draining internally; the event loop sees only READY after close_result().
+close_result()                   -- releases the current result and initiates disposal of the remaining result stream. The adapter must not report the Connection as READY until all results belonging to the Statement have been consumed/discarded. If additional network input is required (Postgres multi-result), the adapter remains in an internal draining state and progresses through poll(). Never performs an unbounded network wait. For MySQL: mysql_free_result (safe — mysql_store_result already pulled all data; connection is clean after free). For SQLite: sqlite3_finalize (safe at any point).
 cancel()                         -- called on Ctrl+c. During QUERYING: abandons the server operation, closes the Connection, triggers reconnect-confirmation. During FETCHING: stops local result consumption via close_result(), returns to READY without reconnecting (the query already completed on the server). See Design decisions.
 list_tables()                    -- returns table names via the driver's catalog query (see Design decisions); simple blocking call
 get_columns(table_name)          -- returns column info via the driver's catalog query; simple blocking call
 ping()                           -- health check; simple blocking call
 close()                          -- closes the Connection; tears down the SSH tunnel if one was started
+capabilities()                  -- returns a table describing driver capabilities:
+                                     query_async        — send_query() is non-blocking
+                                     result_streaming   — next_row() pulls from server incrementally
+                                     result_fetch_async — get_result() does not block the event loop
+                                     early_close_requires_drain — close_result() must drain unread results
 ```
+
+Driver capability table (Phase 1):
+
+| Driver | query_async | result_streaming | result_fetch_async | early_close_requires_drain |
+|---|---|---|---|---|
+| PostgreSQL | true | true | true | true |
+| MySQL/MariaDB | true | false | false | false |
+| SQLite | false | true | false | false |
+
+MySQL Phase 1 limitation: `result_streaming=false` because LuaSQL PR #201 uses `mysql_store_result()` (materializes entire result). MariaDB Connector/C provides `mysql_use_result()` + `mysql_fetch_row_start/cont()` for nonblocking streaming, but PR #201 does not expose them. Phase 2 can upgrade without changing the execution model.
+
+**Driver capability tests** (mandatory, not informational):
+
+| Driver | Test |
+|---|---|
+| PostgreSQL | `send_query` does not block |
+| PostgreSQL | `poll` does not block |
+| PostgreSQL | `get_result` after poll-ready does not block |
+| PostgreSQL | Early result close eventually reaches READY via bounded drain |
+| PostgreSQL | Multi-result drain never blocks inside a single poll tick |
+| MySQL | `send_query` does not block (with `MYSQL_OPT_NONBLOCK`) |
+| MySQL | `poll` does not block |
+| MySQL | `MATERIALIZING` explicitly permits blocking |
+| MySQL | `mysql_store_result` materialization is observable via capabilities |
+| SQLite | `prepare`/`send_query` does not execute the query |
+| SQLite | `step`/`get_result` may block (CPU-bound) |
+| SQLite | Cancellation is only observed between steps |
+
+These tests verify the adapter contract against the actual driver behavior, not just the LuaSQL API surface.
 
 Notes on the contract:
 - **`next_row()` is the only row-pull primitive.** There is no `get_result()`-style method that materializes the whole Result set. Consumers (grid, export) build whatever convenience they need on top of `next_row()` themselves — the grid caps at `max_result_rows`, the export streams-to-file. This is the architectural fix that prevents a naive implementation from materializing 100 000 rows before the consumer gets control.
@@ -229,32 +264,40 @@ Notes on the contract:
 - No transaction methods (`begin`/`commit`/`rollback`) in the MVP contract — see Design decisions.
 - Secrets never leave `connect()`'s config: passwords are passed through and never appear in `error()`, `state()` debug messages, or `history`.
 - **`poll()` is cooperative and bounded.** Each call performs at most one driver continuation step (one `PQconsumeInput`/`PQisBusy` check, one `mysql_real_query_cont` call). The event loop calls `poll()` once per tick, guaranteeing fairness across terminal input, DB polling, SSH polling, and rendering. No subsystem monopolizes the tick.
-- **`close_result()` must leave the connection reusable.** For Postgres, this means draining the complete `PQgetResult` chain until NULL after `PQclear` — without blocking. The drain is safe once the result chain is known to have been completely received (i.e. `poll()` reported done). For MySQL, `mysql_free_result()` is safe because `mysql_store_result()` already pulled all data. For SQLite, `sqlite3_finalize()` cleans up at any point.
+- **`close_result()` must leave the connection reusable.** For Postgres, this means draining unread results through a readiness-aware state machine: `PQconsumeInput`/`PQisBusy` guarantees `PQgetResult` won't block for the next result; after consuming that result, return to the readiness check for any additional results. The drain never performs an unbounded network wait. `close_result()` does not promise instantaneous return to READY if unread server results still need to arrive — the adapter remains in an internal draining state and progresses through `poll()`. For MySQL, `mysql_free_result()` is safe because `mysql_store_result()` already pulled all data. For SQLite, `sqlite3_finalize()` cleans up at any point.
 - **Cancellation is phase-aware.** During `QUERYING`, `cancel()` abandons the server operation and closes the connection (reconnect required). During `FETCHING`, `cancel()` calls `close_result()` and returns to `READY` without reconnecting — the query already completed on the server; the user just wants to stop consuming rows.
 
 Adapter state machine:
 
 ```text
-DISCONNECTED → CONNECTING → READY → QUERYING → FETCHING → READY
-                    │            │
-                    ▼            ├── CANCELING → CANCELED
-                  ERROR          └── ERROR
+DISCONNECTED → CONNECTING → READY → QUERYING → RESULT_READY → MATERIALIZING* → FETCHING → READY
+                    │            │                    │               │
+                    ▼            │                    ▼               │
+                  ERROR          │              CANCELING → CANCELED  │
+                                 │                                    │
+                                 └────────────────────────────────────┘
+
+* MATERIALIZING is entered only when get_result() may block (MySQL).
+  For Postgres, RESULT_READY → get_result() → FETCHING (non-blocking).
+  For SQLite, RESULT_READY → get_result() → FETCHING (CPU-only).
 
 READY (lost mid-session) → CONNECTION_LOST → (UI offers reconnect, with confirmation prompt)
 ```
+
+The event loop drives: `send_query()` → `poll()` (returns true/false) → on false: `get_result()` → `columns()` → `next_row()` loop → `close_result()`. For MySQL, `get_result()` calls `mysql_store_result()` which blocks; the UI should display "Transferring results…" before entering MATERIALIZING.
 
 Non-blocking event loop:
 
 ```text
 while running:
     poll terminal
-    poll database adapter
+    poll database adapter (poll() + get_result() when RESULT_READY)
     poll SSH/process state
     execute bounded application work
     render
 ```
 
-`send_query()` never waits for server completion; `poll()` performs only bounded work per call.
+`send_query()` never waits for server completion; `poll()` performs only bounded work per call. `get_result()` may block for drivers with synchronous result-fetch (MySQL); the UI should indicate MATERIALIZING state before calling it.
 
 ## 5. Layout (fixed for MVP)
 
