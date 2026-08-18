@@ -1,0 +1,44 @@
+CONTEXT.md
+  s_5a186daf4cc67a::t_b211a0239175db 8,12,15-27,29,32,34-37
+  s_5a186daf4cc67a::t_34cd52c79fc615 28
+docs/adr/0003-adapter-contract.md
+  s_5a186daf4cc67a::t_44b2a287a8ac3d 2-6,14-16,18,23
+  s_5a186daf4cc67a::t_d136b1c6b0b871 1,7-13,17,19-22,24-40
+scry-spec.md
+  s_5a186daf4cc67a::t_5dc465c94b2d10 88-94
+  s_5a186daf4cc67a::t_46d06d912decb5 130
+  s_5a186daf4cc67a::t_b1fd2e268644cf 71
+  s_5a186daf4cc67a::t_46c010b47a5dfb 228
+  s_5a186daf4cc67a::t_1785e9ff629659 68-70
+  s_5a186daf4cc67a::t_5a6b798b4e917b 72-74,85-87
+  s_5a186daf4cc67a::t_a1f662855ffc98 95-97,127-129
+  s_5a186daf4cc67a::t_b74633604a2992 131-133,225-227
+  s_5a186daf4cc67a::t_07160f70646fa0 229-231
+docs/adr/0006-export-format-null-handling.md
+  s_5a186daf4cc67a::t_b8c88e7297c6fd 1-9
+docs/adr/0002-shared-sql-parser-module.md
+  s_5a186daf4cc67a::t_2e3cddd5bcf000 1-12
+docs/adr/0004-cancellation-close-and-reconnect.md
+  s_5a186daf4cc67a::t_721bda9e713ff5 1,3,5,7,9-19
+  s_5a186daf4cc67a::t_e40e6c243e9350 2,4,6,8
+docs/adr/0001-halt-on-first-statement-failure.md
+  s_5a186daf4cc67a::t_17a63187003cc9 1-7
+docs/adr/0005-config-merge-semantics.md
+  s_5a186daf4cc67a::t_aa522fbd72618b 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2cb3758f2f41ca14dfc979eb0ce4c19d164ca2f2",
+  "prompts": {},
+  "sessions": {
+    "s_5a186daf4cc67a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a010bc-89e0-73c6-b3e9-4c49adc7d652",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
