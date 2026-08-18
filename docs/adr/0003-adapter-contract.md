@@ -38,10 +38,10 @@ The Execution loop drives `send_query` → `poll` (in the same tick as UI input/
 ## Per-driver async reality (not all three are equal)
 
 - **Postgres** — cooperative network async via libpq: `PQsendQuery` + `PQsetnonblocking(1)` + `PQconsumeInput` / `PQisBusy` / `PQflush` / `PQgetResult`. This is what the Execution loop actually relies on.
-- **MySQL/MariaDB** — cooperative network async when built against **luasql PR #201 + MariaDB Connector/C**. Stock MySQL 8.0.16+ has its own async C API (`mysql_real_query_nonblocking` and friends), but the luasql PR #201 implementation specifically wraps MariaDB's `mysql_real_query_start`/`_cont` (and `mysql_store_result_start`/`_cont`), gated by the `MYSQL_OPT_NONBLOCK` macro. Building against stock MySQL's libmysqlclient leaves that macro undefined and the driver silently falls back to synchronous `mysql_real_query`. CI builds against MariaDB Connector/C so the documented async contract is honest for this implementation.
+- **MySQL/MariaDB** — cooperative network async for **query execution only**, when built against **luasql PR #201 + MariaDB Connector/C**. The luasql PR #201 implementation wraps MariaDB's `mysql_real_query_start`/`_cont` (gated by `MYSQL_OPT_NONBLOCK`) for the query phase. However, result retrieval uses the synchronous `mysql_store_result()` — there is no `mysql_store_result_start`/`_cont` usage. This means the query is non-blocking, but the result transfer from server to client blocks the event loop. Building against stock MySQL's libmysqlclient leaves `MYSQL_OPT_NONBLOCK` undefined and the driver silently falls back to fully synchronous `mysql_real_query`. CI builds against MariaDB Connector/C so the documented async contract is honest for this implementation. A Phase 2 improvement could use MariaDB Connector/C's nonblocking result-fetch APIs or stock MySQL's `mysql_store_result_nonblocking()`/`mysql_fetch_row_nonblocking()`.
 - **SQLite** — prepare/step split; `poll` is non-networking/stubbed. `send_query` does `sqlite3_prepare_v2` only; the first `next_row()` / `get_result` (luasql-internal) does the first `sqlite3_step`; `poll` always returns `false`. No socket readiness is involved — the same cursor/row interface, but without networking-style cancellation in the middle of a long step. SQLite is local-file fast enough that this is acceptable for MVP.
 
-Note the asymmetry: Postgres and MariaDB-Connector-C MySQL provide **cooperative network async** (the FD drives readiness, `poll()` reports it). SQLite provides only a **prepare/step split**. Cancellation across all three goes through close-and-reconnect (see ADR-0004).
+Note the asymmetry: Postgres provides **cooperative network async** (the FD drives readiness, `poll()` reports it) for both query execution and result retrieval. MySQL/MariaDB provides **cooperative network async for query execution only** — result materialization via `mysql_store_result()` blocks. SQLite provides only a **prepare/step split**. Cancellation across all three goes through close-and-reconnect (see ADR-0004).
 
 ## Statement execution model
 
@@ -62,7 +62,7 @@ Each Statement in an Execution follows this cycle:
 The cursor / prepared statement holds client-library resources until released:
 - SQLite: `sqlite3_finalize` on the prepared statement
 - Postgres: `PQclear` on the `PGresult`, plus any remaining result chain from the cursor
-- MariaDB: `mysql_free_result` on the result set
+- MariaDB: `mysql_free_result` on the result set (safe — `mysql_store_result` already pulled all data; connection is clean after free)
 
 Leaking `close_result()` across many Executions accumulates server-side state and eventually fails. Every consumer (grid, export, error path) must call `close_result()` when it's done with the row stream, even on early termination. After `close_result()`, further `next_row()` calls on the same Result set are undefined.
 
