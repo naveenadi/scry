@@ -1,0 +1,19 @@
+docs/research/luasql-async-api.md
+  s_31aba8fb39481b::t_eccfba607c1154 1-487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "91e533a3b4e6a9aff4c4a97be5ff947ed60e9cfc",
+  "prompts": {},
+  "sessions": {
+    "s_31aba8fb39481b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a01707-5573-7cec-8a3f-38190f5400b8",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
