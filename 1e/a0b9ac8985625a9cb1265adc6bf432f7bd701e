@@ -1,0 +1,22 @@
+scry-spec.md
+  s_bfad39662d6f7e::t_2a2693cf2cbf5e 248
+  s_bfad39662d6f7e::t_63f23f69070dda 212-213,217,223-227,230-239,254-263,268
+  s_bfad39662d6f7e::t_c4a4bd672265bc 275,281
+  s_bfad39662d6f7e::t_7b5151199214a5 269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1ea0b9ac8985625a9cb1265adc6bf432f7bd701e",
+  "prompts": {},
+  "sessions": {
+    "s_bfad39662d6f7e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a016fc-d42b-74bd-b091-dff18250a5ac",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
