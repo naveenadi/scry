@@ -299,6 +299,194 @@ while running:
 
 `send_query()` never waits for server completion; `poll()` performs only bounded work per call. `get_result()` may block for drivers with synchronous result-fetch (MySQL); the UI should indicate MATERIALIZING state before calling it.
 
+
+## 4b. Execution lifecycle
+
+The execution engine (`src/core/execution.lua`) drives multi-statement Executions through the adapter contract. It owns Execution state; adapters own Connection/driver state.
+
+### State ownership
+
+```text
+Execution (execution.lua)          Adapter (db/*.lua)
+├── statements[]                   ├── connection state
+├── current_statement              ├── driver continuation state
+├── execution_status               ├── current result
+├── statement_results[]            └── protocol/drain state
+├── current_result
+├── failure
+└── cancellation state
+```
+
+Do not create a second execution state machine inside `state.lua`.
+
+### Execution state machine
+
+```text
+IDLE
+ │
+ │ Ctrl+r
+ ▼
+SPLITTING
+ │
+ ▼
+CLASSIFYING
+ │
+ ├── blocked (read-only) → BLOCKED
+ │
+ ▼
+SEND_QUERY
+ │
+ ▼
+QUERYING
+ │
+ ├── Ctrl+C → CANCELING → RECONNECT_CONFIRM
+ │
+ └── poll-ready
+       ↓
+GETTING_RESULT
+ │
+ ├── MATERIALIZING* → get_result() → FETCHING   (* MySQL only)
+ │
+ ├── result → FETCHING
+ │
+ └── no result → STATEMENT_COMPLETE
+                    │
+                    ├── more statements → SEND_QUERY
+                    └── done → COMPLETE
+
+FETCHING
+ │
+ ├── row → bounded consume → FETCHING
+ │
+ ├── EOF → CLOSING_RESULT
+ │
+ ├── max_result_rows → CLOSING_RESULT
+ │
+ └── Ctrl+C → CLOSING_RESULT (no reconnect)
+
+CLOSING_RESULT
+ │
+ ├── adapter needs drain → DRAINING
+ │                              │
+ │                              └── poll → DRAINING / READY
+ │
+ └── READY
+       │
+       ├── failed → EXECUTION_FAILED
+       ├── more statements → SEND_QUERY
+       └── done → COMPLETE
+```
+
+### Statement lifecycle
+
+One Statement may be active at a time. The next Statement is never sent until the previous Statement's complete result lifecycle reaches adapter READY. This is load-bearing for PostgreSQL: `PQsendQuery()` cannot be issued again until the preceding `PQgetResult()` sequence returns NULL.
+
+```text
+Statement N: send_query → poll → get_result → consume → close_result → READY
+Statement N+1: send_query → ...
+```
+
+### Statement completion
+
+A Statement produces a normalized outcome:
+
+```lua
+{
+    status = "success" | "error",
+    columns = {...},
+    affected_rows = number_or_nil,
+    error = string_or_nil,
+}
+```
+
+The adapter translates driver-specific result semantics. For PostgreSQL, a fatal result still requires the result-reading sequence to continue until `PQgetResult()` returns NULL.
+
+### Failure propagation
+
+Halt immediately, but finish protocol cleanup:
+
+```text
+SELECT → success
+UPDATE → error → record error → finish/discard Statement 2 result lifecycle → STOP
+DELETE → NOT SENT
+```
+
+Transaction state after failure: `ERROR — transaction state may require ROLLBACK` with `[Rollback]` / `[Reconnect]` / `[Dismiss]`. No automatic rollback — the adapter does not interpret transactions.
+
+### Grid max_result_rows
+
+The grid must not continue consuming rows just to reach EOF:
+
+```text
+next_row() → store in grid buffer → cap reached? → close_result() → adapter drains → READY
+```
+
+For PostgreSQL, result disposal may require further readiness-driven processing (DRAINING state).
+
+### Ctrl+C semantics
+
+| Execution state | Ctrl+C | Effect |
+|---|---|---|
+| IDLE | No-op | — |
+| QUERYING | Cancel/abandon | adapter.cancel() → connection closed → reconnect confirmation |
+| MATERIALIZING | Cannot reliably interrupt | MySQL store_result is synchronous; Ctrl+C not observable |
+| FETCHING | Stop local consumption | close_result() → drain if necessary → READY (no reconnect) |
+| DRAINING | Don't interrupt protocol cleanup | wait for drain to complete |
+| COMPLETE | No-op | — |
+| ERROR | UI-dependent dismiss | — |
+
+Ctrl+C while displaying a large result should not unnecessarily destroy a healthy connection. The adapter handles protocol cleanup, then returns to READY.
+
+### Result retention
+
+Execution retains metadata, not historical rows:
+
+```lua
+{
+    sql = original_text,
+    statements = {
+        { sql = "...", status = "success", elapsed_ms = 12, row_count = 100, columns = {...} },
+        { sql = "...", status = "error", error = "..." },
+    },
+    failed_statement = 2,
+}
+```
+
+Previous Statement buffers/results are released. Only the currently displayed result belongs to the grid. Phase 1 displays only the last result set.
+
+### Result ownership
+
+The Execution layer owns the lifecycle; the Grid owns only materialized rows:
+
+```text
+Adapter → next_row() → Execution → row → Grid buffer
+```
+
+The Grid must never call adapter methods directly. `execution:next_row()` and `execution:close_result()` are the only interfaces. This prevents UI code from violating adapter state transitions, result cleanup, PostgreSQL draining, or MySQL materialization semantics.
+
+### Row consumption budget
+
+`next_row()` calls are bounded per UI tick. A million-row fast local cursor must not monopolize the TUI:
+
+```text
+one UI tick → consume bounded number of rows → return to event loop → render → next tick
+```
+
+The row-consumption budget is a configurable internal constant (e.g. 1000 rows per tick).
+
+### Key invariants
+
+1. One active Statement at a time.
+2. Next Statement is never sent until the previous Statement reaches adapter READY.
+3. Execution owns execution state; adapter owns connection state.
+4. A Statement failure prevents all later Statements from being sent.
+5. Result cleanup happens even on failure, cancellation, and grid-cap termination.
+6. Grid never consumes beyond `max_result_rows`.
+7. `next_row()` work is bounded per UI tick.
+8. QUERYING cancellation and FETCHING cancellation have different semantics.
+9. No adapter method performs an unbounded network wait unless explicitly documented.
+10. PostgreSQL result cleanup progresses through readiness checks, not an unconditional PQgetResult loop.
+
 ## 5. Layout (fixed for MVP)
 
 ```text
