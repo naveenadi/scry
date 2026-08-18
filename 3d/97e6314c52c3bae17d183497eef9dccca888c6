@@ -1,0 +1,24 @@
+scry-spec.md
+  s_bfad39662d6f7e::t_a097279115f450 56-57,383-391
+  s_bfad39662d6f7e::t_cb69e192e64d11 207
+  s_bfad39662d6f7e::t_848fd57b9c7723 30
+  s_bfad39662d6f7e::t_1db91367b10ac6 392
+docs/adr/0004-cancellation-close-and-reconnect.md
+  s_bfad39662d6f7e::t_fb11367f9eabe9 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "3d97e6314c52c3bae17d183497eef9dccca888c6",
+  "prompts": {},
+  "sessions": {
+    "s_bfad39662d6f7e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a016fc-d42b-74bd-b091-dff18250a5ac",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
