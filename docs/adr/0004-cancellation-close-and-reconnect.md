@@ -21,7 +21,9 @@ The "real" cancel paths exist in each client library: libpq's `PQcancel`, MySQL/
 - `PGconn` / `MYSQL` / `sqlite3*` are version-dependent userdata structs buried inside luasql's connection metatable. Reaching into them via LuaJIT FFI is a fragile per-driver version-pin that costs more code than the value it adds.
 - LuaJIT is single-threaded. Closing the Connection and reopening it is uniform, simple, and the reconnect-confirmation flow already handles lost connections. We don't need finer-grained cancel; "abandon and reconnect" is the same user-visible behavior.
 
-The tradeoff is one wasted Connection open per cancellation, which is acceptable.
+The tradeoff is one wasted Connection open per cancellation, which is acceptable. This is especially costly with SSH tunnels (seconds, not milliseconds), but the behavior is predictable across all three drivers.
+
+Phase 1 guarantee: Cancellation means "abandon this connection and establish a fresh connection", not "ask the database to cancel only the current statement." Native database cancellation is intentionally deferred because obtaining driver-native handles through LuaSQL would introduce version-dependent FFI coupling. Phase 2 may add native cancellation per driver where a stable interface becomes available.
 
 ## What stays blocking
 

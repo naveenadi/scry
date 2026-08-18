@@ -27,7 +27,7 @@
 
 **Multi-statement failure strategy: halt-on-first.** An Execution stops at the first failed Statement. Statements before it keep their Result sets on screen; the failed Statement's error is shown; remaining Statements in the Buffer/Selection are not sent to the driver. Chosen over run-all/report-per-statement because a mid-buffer failure inside a `BEGIN; ...; COMMIT` block leaves an ambiguous transaction state that differs by driver — halting avoids committing on top of a failure. Matches luasql's natural batch-abort behavior. A `--continue-on-error` mode is deferred to Phase 2, once the grid supports multi-result-set display.
 
-**Parser architecture: one shared module, `src/sql/parse.lua`.** A single streaming state machine tracks `NORMAL`, `SINGLE_QUOTE`, `DOUBLE_QUOTE`, `BACKTICK` (MySQL), `DOLLAR_QUOTE` (Postgres `$tag$...$tag$`, matched by exact tag — not truly nested), `LINE_COMMENT` (`--`), and `BLOCK_COMMENT` (`/* ... */`, non-nested for MVP — documented limitation). It exposes:
+**Parser architecture: one shared module, `src/sql/parse.lua`.** A single streaming state machine tracks `NORMAL`, `SINGLE_QUOTE`, `DOUBLE_QUOTE`, `BACKTICK` (MySQL), `DOLLAR_QUOTE` (Postgres `$tag$...$tag$`, matched by exact, case-sensitive tag — different-tag dollar-quoted strings can occur inside an outer dollar-quoted string and are correctly treated as content of the outer string; same-tag sequences terminate at the first matching delimiter, no nesting-depth tracking required), `LINE_COMMENT` (`--`), and `BLOCK_COMMENT` (`/* ... */`, non-nested for MVP — documented limitation). It exposes:
 - `split_statements(buffer_text) → Statement[]` — the sole authority on statement boundaries.
 - `classify_statement(sql_text) → { type, keyword, blocked_keyword }` — receives only pre-split Statement text, never raw buffer text, so it structurally cannot read across a boundary. `blocked_keyword` reports any data-modifying keyword found anywhere in the tokenized Statement, used by the CTE-aware read-only classifier (see Read-only enforcement).
 
@@ -52,6 +52,8 @@ Note the asymmetry: Postgres and MariaDB-Connector-C MySQL provide **cooperative
 **SQLite cancellation latency caveat (documented user-facing behavior):** because `sqlite3_step` runs without yielding to the event loop, `Ctrl+c` is observable **between** `sqlite3_step` calls, not inside a long step. For local-file queries this is invisible to the user. For a very long-running SQLite statement (e.g. a recursive CTE over a large DB) cancellation latency equals the remaining step time, not a network round-trip — seconds to minutes in pathological cases. Document this expectation in the README so users aren't surprised. If mid-step cancellation on SQLite ever becomes a real requirement, the path is direct FFI to `sqlite3_interrupt(db)` in `src/ffi/sqlite.lua`, deferred to Phase 2.
 
 **Cancellation strategy: close-and-reconnect.** `Ctrl+c` during the poll loop sets an abandon flag, the next poll iteration detects it, `cancel()` closes the Connection (uniform across all three drivers, no raw handle extraction needed — `libpq`'s `PQcancel`/`mysql_kill`/`sqlite3_interrupt` would require FFI bypass of version-dependent userdata structs). UI shows the reconnect-confirmation prompt; on confirm, a new Connection is opened from the same Connection profile. This is a core execution requirement, not an optimization.
+
+Cancellation means "abandon this connection and establish a fresh connection", not "ask the database to cancel only the current statement." This prevents users from expecting driver-specific millisecond cancellation. Native database cancellation is intentionally deferred because obtaining driver-native handles through LuaSQL would introduce version-dependent FFI coupling. Phase 2 may add native cancellation per driver (e.g. `adapter.cancel({ strategy = "native" })`) where a stable native cancellation interface becomes available.
 
 **No transaction control in the adapter contract for MVP.** `BEGIN`/`COMMIT`/`ROLLBACK` are ordinary Statements the user types; the adapter doesn't interpret or auto-wrap them. Auto-transaction wrapping is deferred to Phase 2.
 
@@ -202,7 +204,7 @@ scry/
 ```lua
 connect(config)                  -- opens the Connection; starts the SSH tunnel if configured (see Design decisions)
 send_query(sql)                  -- begins execution of exactly ONE Statement (caller splits via sql.parse first); non-blocking, returns immediately
-poll()                           -- called once per UI tick, the same tick that reads keyboard input; reports whether the query is still running
+poll()                           -- called once per UI tick, the same tick that reads keyboard input; reports whether the query is still running. Driver-specific continuation state (e.g. MySQL socket readiness flags) is private to each adapter; poll() exposes only the common progress contract.
 state()                          -- current state-machine value (CONNECTING / READY / QUERYING / FETCHING / ERROR / CANCELED / CONNECTION_LOST)
 error()                          -- last error, if any
 columns()                        -- column metadata for the current Result set; valid once state() reports columns are available
@@ -377,6 +379,16 @@ Always-insert style, no modal Vim editing.
 - **Export consumer** — `Ctrl+e` (CSV) and `Ctrl+Shift+e` (JSON) read off the row stream directly and write to the output file as rows arrive. **Not** bounded by `max_result_rows`.
 
 The two consumers must not share a materialized buffer. If the implementation first materializes the whole result and then exports from that buffer, the memory guarantee on the grid is meaningless and a large export still costs the same memory as the grid — defeating the point. The contract has no `get_result()`-style method exactly so the wrong implementation cannot ship accidentally — each consumer pulls what it needs off `next_row()`. Document this distinction (grid: capped, export: full) in the README so it isn't surprising.
+
+**Driver-level buffering asymmetry.** `next_row()` is the sole logical row-pull primitive, but the adapter contract does not guarantee identical physical buffering semantics across drivers:
+
+| Driver | Result behavior |
+|---|---|
+| PostgreSQL | Streaming-oriented — libpq returns results incrementally via `PQgetResult`. |
+| MySQL/MariaDB | Driver materializes the entire result via `mysql_store_result()` before `next_row()` can consume rows. |
+| SQLite | Row production is driven by `sqlite3_step()` — local, blocking per step. |
+
+`general.max_result_rows` is a **grid materialization cap** — it limits rows materialized by scry's grid consumer. It does not limit memory allocated internally by a database client library (e.g. `mysql_store_result()`) and does not cause scry to rewrite SQL with `LIMIT`. Do not claim scry never uses more than X memory for results; claim the grid never materializes more than `max_result_rows` rows itself.
 
 **Grid behavior:**
 - Default page size from `general.default_page_size`.
