@@ -27,6 +27,10 @@
 
 **Multi-statement failure strategy: halt-on-first.** An Execution stops at the first failed Statement. Statements before it keep their Result sets on screen; the failed Statement's error is shown; remaining Statements in the Buffer/Selection are not sent to the driver. Chosen over run-all/report-per-statement because a mid-buffer failure inside a `BEGIN; ...; COMMIT` block leaves an ambiguous transaction state that differs by driver — halting avoids committing on top of a failure. Matches luasql's natural batch-abort behavior. A `--continue-on-error` mode is deferred to Phase 2, once the grid supports multi-result-set display.
 
+**Multi-statement result display.** Phase 1 displays only the most recent successful Result set from an Execution. Execution metadata retains per-statement outcome information (success/error per statement, row counts), but Phase 1 does not retain arbitrary prior result rows after their result resources are released. Result-set tabs (Phase 2) will make all Result sets from an Execution accessible.
+
+**Transaction state after failure.** The execution engine does not interpret `BEGIN`/`COMMIT`/`ROLLBACK` — they are ordinary Statements. When a mid-transaction Statement fails and execution halts, the transaction may remain open. The UI surfaces this as `ERROR — transaction state may require ROLLBACK` with three options: `[Rollback]` (issues `ROLLBACK` as a new statement), `[Reconnect]` (close and re-establish the connection), `[Dismiss]` (continue on the current connection). The adapter never auto-rollbacks.
+
 **Parser architecture: one shared module, `src/sql/parse.lua`.** A single streaming state machine tracks `NORMAL`, `SINGLE_QUOTE`, `DOUBLE_QUOTE`, `BACKTICK` (MySQL), `DOLLAR_QUOTE` (Postgres `$tag$...$tag$`, matched by exact, case-sensitive tag — different-tag dollar-quoted strings can occur inside an outer dollar-quoted string and are correctly treated as content of the outer string; same-tag sequences terminate at the first matching delimiter, no nesting-depth tracking required), `LINE_COMMENT` (`--`), and `BLOCK_COMMENT` (`/* ... */`, non-nested for MVP — documented limitation). It exposes:
 - `split_statements(buffer_text) → Statement[]` — the sole authority on statement boundaries.
 - `classify_statement(sql_text) → { type, keyword, blocked_keyword }` — receives only pre-split Statement text, never raw buffer text, so it structurally cannot read across a boundary. `blocked_keyword` reports any data-modifying keyword found anywhere in the tokenized Statement, used by the CTE-aware read-only classifier (see Read-only enforcement).
@@ -203,14 +207,14 @@ scry/
 
 ```lua
 connect(config)                  -- opens the Connection; starts the SSH tunnel if configured (see Design decisions)
-send_query(sql)                  -- begins execution of exactly ONE Statement (caller splits via sql.parse first); non-blocking, returns immediately
+send_query(sql)                  -- begins execution of exactly ONE Statement (caller splits via sql.parse first); non-blocking, returns immediately. MUST perform only bounded, non-blocking work and return without waiting for server/network completion. Testable: an intentionally delayed query must not block the event loop.
 poll()                           -- called once per UI tick, the same tick that reads keyboard input; reports whether the query is still running. Driver-specific continuation state (e.g. MySQL socket readiness flags) is private to each adapter; poll() exposes only the common progress contract.
 state()                          -- current state-machine value (CONNECTING / READY / QUERYING / FETCHING / ERROR / CANCELED / CONNECTION_LOST)
 error()                          -- last error, if any
 columns()                        -- column metadata for the current Result set; valid once state() reports columns are available
 next_row()                       -- pull the next row once columns() is available; nil = end of results (a real signal, not a row)
-close_result()                   -- release per-result resources: finalized prepared statement (SQLite: sqlite3_finalize), freed cursor (Postgres: PQclear, MariaDB: mysql_free_result). MUST be called by every consumer when it's done with the row stream, even on early termination.
-cancel()                         -- called on Ctrl+c while a query is in flight; closes the Connection (uniform across all three drivers, no driver-native cancel — see Design decisions)
+close_result()                   -- release per-result resources and restore the Connection to READY state. MUST be called by every consumer when it's done with the row stream, even on early termination. Driver-specific cleanup: SQLite sqlite3_finalize (safe at any point); MySQL mysql_free_result (safe — mysql_store_result already pulled all data); Postgres PQclear followed by draining the complete PQgetResult chain until NULL (required — PQclear alone leaves unread results on the connection). The adapter handles draining internally; the event loop sees only READY after close_result().
+cancel()                         -- called on Ctrl+c. During QUERYING: abandons the server operation, closes the Connection, triggers reconnect-confirmation. During FETCHING: stops local result consumption via close_result(), returns to READY without reconnecting (the query already completed on the server). See Design decisions.
 list_tables()                    -- returns table names via the driver's catalog query (see Design decisions); simple blocking call
 get_columns(table_name)          -- returns column info via the driver's catalog query; simple blocking call
 ping()                           -- health check; simple blocking call
@@ -224,6 +228,9 @@ Notes on the contract:
 - `close_result()` is mandatory. The cursor / prepared statement holds client-library resources until released; leaking it across many Executions accumulates server-side state and eventually fails. After `close_result()`, calling `next_row()` again on the same Result set is undefined.
 - No transaction methods (`begin`/`commit`/`rollback`) in the MVP contract — see Design decisions.
 - Secrets never leave `connect()`'s config: passwords are passed through and never appear in `error()`, `state()` debug messages, or `history`.
+- **`poll()` is cooperative and bounded.** Each call performs at most one driver continuation step (one `PQconsumeInput`/`PQisBusy` check, one `mysql_real_query_cont` call). The event loop calls `poll()` once per tick, guaranteeing fairness across terminal input, DB polling, SSH polling, and rendering. No subsystem monopolizes the tick.
+- **`close_result()` must leave the connection reusable.** For Postgres, this means draining the complete `PQgetResult` chain until NULL after `PQclear` — without blocking. The drain is safe once the result chain is known to have been completely received (i.e. `poll()` reported done). For MySQL, `mysql_free_result()` is safe because `mysql_store_result()` already pulled all data. For SQLite, `sqlite3_finalize()` cleans up at any point.
+- **Cancellation is phase-aware.** During `QUERYING`, `cancel()` abandons the server operation and closes the connection (reconnect required). During `FETCHING`, `cancel()` calls `close_result()` and returns to `READY` without reconnecting — the query already completed on the server; the user just wants to stop consuming rows.
 
 Adapter state machine:
 
@@ -404,6 +411,7 @@ The two consumers must not share a materialized buffer. If the implementation fi
 - `Ctrl+e` → CSV, RFC 4180: values double-quoted when containing comma/newline/double-quote; embedded quotes escaped by doubling (`"` → `""`). NULL → empty string. UTF-8 output.
 - `Ctrl+Shift+e` → JSON: NULL → JSON `null`, boolean → JSON boolean, numeric → JSON number when type info is reliable, string → JSON string, binary → encoded string. Never silently stringify every value.
 - File output first; add clipboard only if a supported native command is available.
+- **Export is an independent execution.** The grid and export are alternative consumers of a result stream — they never consume the same result concurrently. For Phase 1, export is permitted only when the current Execution consists of exactly one classified read-only SELECT statement (as determined by `classify_statement()`). Export re-executes that statement using a fresh result stream. Export is unavailable for non-SELECT statements, multi-statement Executions, or statements containing side-effecting functions — show a warning in these cases. This avoids the half-consumed cursor problem and the danger of re-executing writes.
 
 ## 10. Global commands and read-only enforcement
 
