@@ -1,0 +1,31 @@
+scry-spec.md
+  s_bfad39662d6f7e::t_0fcfd34e42f83f 210,216-217
+  s_bfad39662d6f7e::t_19fd8f2afc2d0d 231-233
+  s_bfad39662d6f7e::t_973584104ee6b0 30-33,414
+docs/research/luasql-source-inspection.md
+  s_454631424e5e3b::t_238beec6fc8638 1-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "550bdcf4f6ad0ce2aa5dbd2727efc45ea00c83a0",
+  "prompts": {},
+  "sessions": {
+    "s_454631424e5e3b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0171c-32b8-7e35-8617-d30a33f3bc21",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_bfad39662d6f7e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a016fc-d42b-74bd-b091-dff18250a5ac",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
