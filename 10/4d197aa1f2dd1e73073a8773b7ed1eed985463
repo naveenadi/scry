@@ -1,0 +1,86 @@
+src/core/errors.lua
+  s_fac7214ef4a4ab::t_cbf77c21ad13db 1-23
+src/platform/unix.lua
+  s_fac7214ef4a4ab::t_14f15c96a3d0f6 1-306
+tests/sql/parse_test.lua
+  s_fac7214ef4a4ab::t_235bce7cd5cc21 72,108,118
+  s_fac7214ef4a4ab::t_cad4e770e95f10 109
+  s_fac7214ef4a4ab::t_51f59fec6e8277 1-71,73-107,110-117,119-309
+src/app.lua
+  s_fac7214ef4a4ab::t_ead1507624a4ce 1-592
+src/utils/syntax.lua
+  s_fac7214ef4a4ab::t_f1779008226d79 1-196
+tests/integration/sqlite_test.lua
+  s_fac7214ef4a4ab::t_fc9356ed1604b9 5-6,10
+  s_fac7214ef4a4ab::t_fea48606b1cfc5 1-4,11-165
+  s_fac7214ef4a4ab::t_e5bb095d30aac7 7-9
+src/core/state.lua
+  s_fac7214ef4a4ab::t_954da878083fca 1-49
+src/platform/windows.lua
+  s_fac7214ef4a4ab::t_b4981491d8fc5a 1-139
+examples/.scry_config.lua.example
+  s_fac7214ef4a4ab::t_fa4ad5552dddcb 1-21
+src/sql/parse.lua
+  s_fac7214ef4a4ab::t_acca14dc28b81f 1-223,226-227,229-481
+  s_fac7214ef4a4ab::t_42edcded3ed61f 224-225,228
+build/SOURCES.txt
+  s_35a4ff11c18c74::t_670f26876afc07 1-29
+src/ui/editor.lua
+  s_fac7214ef4a4ab::t_4764a2f65d41d9 1-173
+examples/config.lua.example
+  s_fac7214ef4a4ab::t_6dd601360f20ce 1-53
+src/ui/layout.lua
+  s_fac7214ef4a4ab::t_eeac015631ee08 1-56
+src/tui/terminal.lua
+  s_fac7214ef4a4ab::t_cb269cbdd7e3f2 1-327
+tests/config/merge_test.lua
+  s_fac7214ef4a4ab::t_b7392b646a8417 1-134
+tests/integration/execution_test.lua
+  s_fac7214ef4a4ab::t_963a4888236b77 128-129,132-133,136,180-181
+  s_fac7214ef4a4ab::t_41b078a4028e3c 1-127,130-131,134-135,137-179,182-224
+src/config/defaults.lua
+  s_fac7214ef4a4ab::t_a7350048eca488 1-40
+Makefile
+  s_fac7214ef4a4ab::t_a0dd8bceea1777 1-2,15-18,54-65,68
+src/config/loader.lua
+  s_fac7214ef4a4ab::t_5d69ab2fe8c62e 1-117
+src/platform/init.lua
+  s_fac7214ef4a4ab::t_1060b5bb1e0033 1-22
+src/db/adapter.lua
+  s_fac7214ef4a4ab::t_3193a802c51687 1-26
+src/core/execution.lua
+  s_fac7214ef4a4ab::t_a0a5cabd787161 1-124,126-383
+  s_fac7214ef4a4ab::t_49dbd6cc4ffddf 125
+src/main.c
+  s_fac7214ef4a4ab::t_e38d9dc7efdf2e 51-60,66-79,81
+src/db/sqlite.lua
+  s_fac7214ef4a4ab::t_89bef1644ce340 1-272
+src/config/merge.lua
+  s_fac7214ef4a4ab::t_7109467ec0ec4e 1-54
+src/core/event_loop.lua
+  s_fac7214ef4a4ab::t_7d7b3ec6cc0fc2 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "104d197aa1f2dd1e73073a8773b7ed1eed985463",
+  "prompts": {},
+  "sessions": {
+    "s_35a4ff11c18c74": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02110-d31f-70ab-acb9-1ebc2c4a744c",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_fac7214ef4a4ab": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a020bc-9e42-739b-ad72-8039bde1b535",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
