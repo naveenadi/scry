@@ -1,0 +1,21 @@
+-- scry project config example
+-- Place at the repo root as .scry_config.lua
+-- Project config overrides global config (connections replace by name, not merge)
+
+return {
+  connections = {
+    -- This replaces the global "local_dev" connection entirely
+    local_dev = {
+      type = "postgres",
+      host = "localhost",
+      port = 5433,  -- different port for this project
+      database = "project_db",
+      user = "dev",
+      password = os.getenv("PROJECT_DB_PASSWORD"),
+      read_only = false,
+    },
+  },
+  general = {
+    default_page_size = 50,
+  },
+}

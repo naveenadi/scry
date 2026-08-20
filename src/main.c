@@ -30,18 +30,6 @@ static void preload_sqlite3(lua_State *L) {
 int main(int argc, char **argv) {
     lua_State *L;
 
-    if (argc > 1 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
-        printf("scry — terminal SQL client (prototype)\n");
-        printf("Usage: scry [--read-only] [--debug] [--help]\n");
-        printf("       scry --version\n");
-        return 0;
-    }
-
-    if (argc > 1 && strcmp(argv[1], "--version") == 0) {
-        printf("scry 0.1.0-prototype\n");
-        return 0;
-    }
-
     L = luaL_newstate();
     if (!L) {
         fprintf(stderr, "error: failed to create Lua state\n");
@@ -60,13 +48,35 @@ int main(int argc, char **argv) {
     }
     lua_setglobal(L, "arg");
 
-    /* Run scry.lua from CWD */
-    if (luaL_dofile(L, "scry.lua") != 0) {
+    /* Set up package path to find src/ modules */
+    lua_getglobal(L, "package");
+    lua_pushstring(L, "src/?.lua;?.lua");
+    lua_setfield(L, -2, "path");
+    lua_pop(L, 1);
+
+    /* Run src/app.lua */
+    lua_getglobal(L, "require");
+    lua_pushstring(L, "src.app");
+    if (lua_pcall(L, 1, 1, 0) != 0) {
         fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
         lua_close(L);
         return 1;
     }
 
+    /* Call app.run(arg) */
+    lua_getfield(L, -1, "run");
+    lua_getglobal(L, "arg");
+    if (lua_pcall(L, 1, 1, 0) != 0) {
+        fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
+        lua_close(L);
+        return 1;
+    }
+
+    /* Get return code */
+    int rc = 0;
+    if (lua_isnumber(L, -1)) {
+        rc = (int)lua_tonumber(L, -1);
+    }
     lua_close(L);
-    return 0;
+    return rc;
 }

@@ -1,0 +1,29 @@
+Scry dependency pins — a release is reproducible only from these exact versions.
+
+LuaJIT:
+  repository = https://github.com/LuaJIT/LuaJIT
+  branch     = v2.1
+  commit     = 1edc3e52b67eaf6ce5f809be8e17d6862594b8bc
+
+LuaSQL:
+  repository = https://github.com/lunarmodules/luasql
+  branch     = master
+  commit     = 491fea76b9d9ee613fcd7de6b8a1c902e3668d11
+  note       = Contains PR #201 (async-io by lvitals) — required for async adapter contract
+
+MariaDB Connector/C:
+  repository = https://github.com/mariadb-corporation/mariadb-connector-c
+  version    = TBD — pinned at build time
+
+libpq:
+  distribution = system package (e.g. libpq5 on Debian/Ubuntu, postgresql-libs on Arch)
+  version      = system
+
+libsqlite3:
+  distribution = system package (e.g. libsqlite3-0 on Debian/Ubuntu)
+  version      = system
+
+Terminal backend:
+  name       = termbox2
+  repository = https://github.com/termbox/termbox2
+  version    = master (single-header library, vendored)

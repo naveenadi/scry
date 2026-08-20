@@ -1,0 +1,53 @@
+-- scry global config example
+-- Place at: ~/.config/scry/config.lua (Unix) or %APPDATA%\scry\config.lua (Windows)
+
+return {
+  general = {
+    default_page_size = 100,
+    max_result_rows = 100000,
+    sidebar_width = 30,
+    mouse_enabled = true,
+    theme = "dark",               -- "dark" | "light"
+    connect_timeout_seconds = 10,
+  },
+  connections = {
+    local_dev = {
+      type = "postgres",          -- "postgres" | "mysql" | "sqlite"
+      host = "localhost",
+      port = 5432,
+      database = "mydb",
+      user = "dev",
+      password = os.getenv("DB_DEV_PASSWORD"),
+      read_only = false,
+      ssh_tunnel = {
+        host = "bastion.example.com",
+        username = "deploy",
+        key_path = os.getenv("HOME") .. "/.ssh/id_ed25519",
+        local_port = 5433,
+      },
+    },
+    local_sqlite = {
+      type = "sqlite",
+      database = "/path/to/database.db",
+      read_only = false,
+    },
+    production = {
+      type = "postgres",
+      host = "prod-db.example.com",
+      port = 5432,
+      database = "mydb",
+      user = "readonly_user",
+      password = os.getenv("DB_PROD_PASSWORD"),
+      read_only = true,
+    },
+  },
+  query_editor = {
+    syntax_highlighting = true,
+    history_limit = 1000,
+    history_max_entry_bytes = 1024 * 1024,
+  },
+  keybindings = {
+    quit = "q",
+    run_query = "Ctrl-r",
+  },
+}

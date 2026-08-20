@@ -1,5 +1,5 @@
-# Scry prototype Makefile — builds the runtime baseline smoke binary
-# See docs/prototype/measurements.md for context
+# Scry Makefile — builds the production binary
+# See build/SOURCES.txt for pinned dependency versions
 
 LUAJIT_DIR  = vendor/LuaJIT
 LUAJIT_INC  = $(LUAJIT_DIR)/src
@@ -12,7 +12,10 @@ CFLAGS     ?= -O2
 SQLITE_CFLAGS = $(shell pkg-config --cflags sqlite3 2>/dev/null)
 SQLITE_LIBS   = $(shell pkg-config --libs sqlite3 2>/dev/null)
 
-.PHONY: all clean vendor
+# Lua source files
+LUA_SRC = $(shell find src -name '*.lua' -not -path '*/platform/windows.lua')
+
+.PHONY: all clean vendor test check
 
 all: scry
 
@@ -48,5 +51,18 @@ scry: src/main.c src/luasql.o src/ls_sqlite3.o $(LUAJIT_LIB) libtermbox2.dylib
 	$(CC) $(CFLAGS) -o $@ -I$(LUAJIT_INC) src/main.c src/luasql.o src/ls_sqlite3.o \
 	  $(LUAJIT_LIB) $(SQLITE_LIBS) -lm
 
+# --- tests ---
+test: scry
+	@echo "Running tests..."
+	@for f in tests/**/*_test.lua; do \
+		echo "  $$f"; \
+		./scry $$f || exit 1; \
+	done
+	@echo "All tests passed."
+
+# --- check (lint + test) ---
+check: test
+
 clean:
 	rm -f scry libtermbox2.dylib src/*.o
+	rm -rf build/
