@@ -183,6 +183,11 @@ function M.tokenize_line(line)
             table.insert(tokens, { type = TOKEN_PAREN, text = ch })
             i = i + 1
 
+        elseif ch:match("%s") then
+            flush()
+            table.insert(tokens, { type = TOKEN_DEFAULT, text = ch })
+            i = i + 1
+
         else
             current = current .. ch
             i = i + 1

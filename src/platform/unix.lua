@@ -64,6 +64,15 @@ enum {
     POLLIN = 1,
     POLLOUT = 4,
 };
+
+int mkdir(const char *path, int mode);
+unsigned short ntohs(unsigned short netshort);
+
+struct timespec {
+    long tv_sec;
+    long tv_nsec;
+};
+int clock_gettime(int clk_id, struct timespec *tp);
 ]]
 
 local C = ffi.C
@@ -226,8 +235,23 @@ function M.poll_writable(fd, timeout_ms)
 end
 
 -- Create a directory (recursive, like mkdir -p).
+-- Per-segment FFI mkdir — no shell involved, no escaping concerns.
 function M.mkdir_p(path)
-    os.execute('mkdir -p "' .. path .. '"')
+    local segments = {}
+    for seg in path:gmatch("[^/]+") do
+        segments[#segments + 1] = seg
+    end
+    local acc = ""
+    for i, seg in ipairs(segments) do
+        if i == 1 and path:sub(1, 1) == "/" then
+            acc = "/" .. seg
+        elseif acc == "" then
+            acc = seg
+        else
+            acc = acc .. "/" .. seg
+        end
+        C.mkdir(acc, 0x1FF) -- 0777; EEXIST on existing segments is fine
+    end
 end
 
 -- Check if a file exists.
@@ -282,6 +306,14 @@ function M.cwd()
         return result:gsub("%s+$", "")
     end
     return nil
+end
+
+-- Wall-clock milliseconds (for elapsed query time; os.clock() is CPU time
+-- and freezes during network waits).
+function M.monotonic_ms()
+    local ts = ffi.new("struct timespec")
+    C.clock_gettime(0, ts) -- CLOCK_REALTIME
+    return tonumber(ts.tv_sec) * 1000 + math.floor(tonumber(ts.tv_nsec) / 1000000)
 end
 
 -- Path separator.

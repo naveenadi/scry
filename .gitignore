@@ -39,6 +39,9 @@ luac.out
 *.x86_64
 *.hex
 
+# Pi local state
+.pi/
+
 # Prototype build artifacts
 scry
 libtermbox2.dylib

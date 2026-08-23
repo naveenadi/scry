@@ -3,6 +3,11 @@
 
 local M = {}
 
+local ok_ffi, ffi = pcall(require, "ffi")
+if ok_ffi then
+    ffi.cdef[[int _mkdir(const char *path);]]
+end
+
 -- Windows-specific implementations would go here.
 -- For Phase 1, this module provides the same API as unix.lua
 -- but with Windows-appropriate defaults.
@@ -40,7 +45,21 @@ function M.history_path()
 end
 
 function M.mkdir_p(path)
-    os.execute('mkdir "' .. path .. '" 2>nul')
+    if ok_ffi then
+        -- Per-segment _mkdir; EEXIST on existing segments is fine.
+        -- No shell involved, so no quoting/escaping pitfalls.
+        local acc = ""
+        for seg in path:gmatch("[^\\/]+") do
+            if acc == "" then
+                acc = seg
+            else
+                acc = acc .. "\\" .. seg
+            end
+            ffi.C._mkdir(acc)
+        end
+    else
+        error("mkdir_p requires LuaJIT FFI on Windows")
+    end
 end
 
 function M.file_exists(path)
@@ -90,6 +109,12 @@ function M.cwd()
         return result:gsub("%s+$", "")
     end
     return nil
+end
+
+-- Wall-clock milliseconds. Matches unix.monotonic_ms(); os.clock() is CPU
+-- time and freezes during waits, so it's wrong for elapsed query time.
+function M.monotonic_ms()
+    return math.floor(os.time() * 1000)
 end
 
 M.path_sep = "\\"

@@ -43,74 +43,13 @@ M.ALLOWED_KEYWORDS = {
     "SELECT", "EXPLAIN", "SHOW", "DESCRIBE", "DESC", "PRAGMA", "SET",
 }
 
--- Create a new tokenizer state machine.
--- Returns an object with methods for processing characters.
+-- Create a new tokenizer state container.
+-- Returns an object with state fields used by split_statements().
 function M.new_tokenizer()
-    local self = {
+    return {
         state = M.STATE_NORMAL,
-        pos = 0,           -- current byte position
         dollar_tag = nil,  -- the dollar-quote tag we're looking for
     }
-
-    -- Process a single character. Returns true if this char is a statement boundary (;).
-    function self:process_char(ch, byte_pos)
-        self.pos = byte_pos
-
-        if self.state == M.STATE_NORMAL then
-            if ch == "'" then
-                self.state = M.STATE_SINGLE_QUOTE
-            elseif ch == '"' then
-                self.state = M.STATE_DOUBLE_QUOTE
-            elseif ch == '`' then
-                self.state = M.STATE_BACKTICK
-            elseif ch == '-' then
-                -- Peek: is next char also '-'?
-                -- We handle this at the string level, not char level
-                -- For now, we'll handle -- detection in the string scanner
-            elseif ch == '/' then
-                -- Peek: is next char '*'?
-                -- Same: handled at string level
-            elseif ch == '$' then
-                -- Dollar-quote start: need to capture the tag
-                -- Handled at string level
-            elseif ch == ';' then
-                return true  -- statement boundary
-            end
-        elseif self.state == M.STATE_SINGLE_QUOTE then
-            if ch == "'" then
-                -- Check for escaped single-quote (doubled)
-                -- This is handled at string level
-                self.state = M.STATE_NORMAL
-            end
-        elseif self.state == M.STATE_DOUBLE_QUOTE then
-            if ch == '"' then
-                -- Check for escaped double-quote
-                -- Handled at string level
-                self.state = M.STATE_NORMAL
-            end
-        elseif self.state == M.STATE_BACKTICK then
-            if ch == '`' then
-                self.state = M.STATE_NORMAL
-            end
-        elseif self.state == M.STATE_DOLLAR_QUOTE then
-            if ch == '$' then
-                -- Check if we're closing the dollar quote
-                -- Handled at string level
-            end
-        elseif self.state == M.STATE_LINE_COMMENT then
-            if ch == '\n' then
-                self.state = M.STATE_NORMAL
-            end
-        elseif self.state == M.STATE_BLOCK_COMMENT then
-            if ch == '*' then
-                -- Check if next char is '/'
-                -- Handled at string level
-            end
-        end
-        return false
-    end
-
-    return self
 end
 
 -- Split a buffer text into statements.

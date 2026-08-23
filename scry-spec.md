@@ -520,9 +520,9 @@ The row-consumption budget is a configurable internal constant (e.g. 1000 rows p
 | `H` / `L` | Scroll columns horizontally |
 | `Ctrl+e` | Export CSV |
 | `Ctrl+Shift+e` | Export JSON (distinct binding; not the same key as CSV) |
-| `q` | Quit, with confirmation if a query is running or the editor has unsaved text |
+| `q` | Insert the literal character `q` in the editor; quit through command mode with `:q` |
 | `Ctrl+c` | Cancel active operation; abandon and reconnect via confirmation prompt |
-| `Esc` | Move focus to sidebar (from editor) |
+| `Esc` | Enter command mode from the editor; exit command mode when already in command mode |
 | `?` | Help overlay |
 
 Vim navigation applies only to navigable views (sidebar, grid); the editor never treats `h/j/k/l`/`g`/`G` as commands.
@@ -598,14 +598,17 @@ Ship `config.lua.example` and `.scry_config.lua.example`.
 
 ## 8. Query editor
 
-Always-insert style, no modal Vim editing.
+The editor uses always-insert mode. Command mode is a separate, visible mode for global commands; it is not modal Vim editing.
 
 - Multi-line buffer, multi-statement execution via `src/sql/parse.split_statements()`.
 - `Ctrl+r` runs the whole buffer, or the selection if one exists — halt-on-first-failure (see Design decisions): Statements before a failure keep their Result sets; the failed Statement's error is shown; later Statements don't run.
-- SQL keyword/string/comment/function highlighting via the shared tokenizer — no external deps.
+- SQL keyword/string/comment/function highlighting via the shared tokenizer — no external deps. Highlighting preserves all source whitespace, so `SELECT * FROM users` remains visibly separated.
 - History persisted to `history.jsonl` in the platform state directory (plain data, one JSON object per line — see Design decisions; **not** executable Lua). One entry per **Execution** (not per Statement) — `sql` is the full buffer/selection text as run, even when multi-statement. Appended on every Execution regardless of outcome; oldest entries pruned once count exceeds `query_editor.history_limit`; entries over `query_editor.history_max_entry_bytes` truncated/flagged rather than silently dropped; the file is rewritten on each append. `Ctrl+p`/`Ctrl+n` navigate, `:history` searches by substring on `sql`. History is never executed as code.
-- Arrows, Home/End, `Ctrl+a/e`, `Ctrl+k/u`, `Ctrl+l` clear.
-- `Esc` moves focus to the sidebar.
+- Arrows, Home/End, `Backspace`, `Delete`, `Enter`, `Ctrl+a/e`, `Ctrl+k/u`, and `Ctrl+l` work in the editor. Backspace accepts both the `0x08` and `0x7f` terminal encodings.
+- `:` or `Esc` enters command mode from the editor. The status bar displays `[INSERT]` or `[COMMAND]` so the active mode is clear.
+- In command mode, type `q` or `:q` and press `Enter` to quit. Press `Esc` to return to insert mode.
+- A literal `q` typed in the editor is inserted into the Buffer and never quits the application.
+- `Tab` changes focus between the sidebar, editor, and grid.
 
 ## 9. Results grid, result model, memory policy
 
@@ -631,6 +634,8 @@ The two consumers must not share a materialized buffer. If the implementation fi
 **Grid behavior:**
 - Default page size from `general.default_page_size`.
 - Client-side paging over materialized rows: `Ctrl+f`/`Ctrl+b` next/prev page, `gg`/`G` first/last row.
+- Column widths are based on column names and loaded cell values, with cell display text capped at 30 characters. Columns are padded to those widths and separated with `|`; the header is followed by a matching `-+-` separator row.
+- `NULL` values render as `NULL`, empty strings remain empty, and binary values render as `[binary]`.
 - `Enter` on a column header toggles asc/desc sort.
 - `/` opens a case-insensitive substring row filter.
 - `Ctrl+r` refreshes the current query.
@@ -646,9 +651,11 @@ The two consumers must not share a materialized buffer. If the implementation fi
 
 ## 10. Global commands and read-only enforcement
 
-- `:` command mode: `:connect NAME`, `:quit`, `:help`, `:history`
+- `:` or `Esc` enters command mode from the editor. The status bar shows `[COMMAND]`; normal editing shows `[INSERT]`.
+- Command mode accepts `:connect NAME`, `:quit`/`:q`, `:help`, and `:history`. The leading colon is optional because `:` is already displayed as the command prompt; `:q` and `q` therefore have the same effect.
+- `Esc` exits command mode and returns to insert mode.
+- A literal `q` in the editor is not a quit command and is inserted into the Buffer.
 - `?` help overlay: a static modal listing the full keybinding table (§5's table — generated from one source in code, not hand-duplicated, so it can't drift from the spec). No context-sensitivity or search for MVP; both deferred to Phase 2. Closes on any keypress or `Esc`.
-- `q` quits, with confirmation if a query is running or the editor has unsaved text
 - `Ctrl+c` cancels the active operation when driver support permits; otherwise returns control safely
 
 Read-only, enabled by a connection's `read_only = true` or `--read-only`:

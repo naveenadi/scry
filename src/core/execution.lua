@@ -99,23 +99,25 @@ function M.new(adapter, config)
         return self:_advance()
     end
 
-    -- Advance the state machine. Returns true to continue, false to stop.
+    -- Advance the state machine by one step. Called once per event-loop tick
+    -- (via poll()) or recursively for immediate transitions that don't need
+    -- to yield (SPLITTING→CLASSIFYING, CLASSIFYING→SEND_QUERY, etc.).
     function self:_advance()
-        while true do
             if self.state == M.SPLITTING then
                 self.statements = parse.split_statements(self.buffer_text)
                 if #self.statements == 0 then
                     self.state = M.COMPLETE
-                    return true
+                    return
                 end
                 self.current_statement_index = 0
                 self.state = M.CLASSIFYING
+                return self:_advance()
 
             elseif self.state == M.CLASSIFYING then
                 self.current_statement_index = self.current_statement_index + 1
                 if self.current_statement_index > #self.statements then
                     self.state = M.COMPLETE
-                    return true
+                    return
                 end
 
                 local stmt = self.statements[self.current_statement_index]
@@ -134,10 +136,11 @@ function M.new(adapter, config)
                     self.execution_status = "error"
                     self:_record_statement_result(self.current_statement_index, "error", nil, self.result_error)
                     self.state = M.EXECUTION_FAILED
-                    return true
+                    return
                 end
 
                 self.state = M.SEND_QUERY
+                return self:_advance()
 
             elseif self.state == M.SEND_QUERY then
                 local stmt = self.statements[self.current_statement_index]
@@ -147,10 +150,10 @@ function M.new(adapter, config)
                     self.execution_status = "error"
                     self:_record_statement_result(self.current_statement_index, "error", nil, self.result_error)
                     self.state = M.EXECUTION_FAILED
-                    return true
+                    return
                 end
                 self.state = M.QUERYING
-                return true -- yield to event loop for polling
+                -- Yield to event loop; poll() will drive QUERYING→RESULT_READY
 
             elseif self.state == M.QUERYING then
                 if self.cancel_requested then
@@ -161,16 +164,17 @@ function M.new(adapter, config)
                 local adapter_state = self.adapter:state()
                 if adapter_state == "RESULT_READY" then
                     self.state = M.GETTING_RESULT
+                    return self:_advance()
                 elseif adapter_state == "ERROR" then
                     self.result_error = self.adapter:error() or "query failed"
                     self.execution_status = "error"
                     self:_record_statement_result(self.current_statement_index, "error", nil, self.result_error)
                     self.state = M.EXECUTION_FAILED
-                    return true
+                    return
                 elseif adapter_state == "CANCELED" then
                     self.execution_status = "cancelled"
                     self.state = M.EXECUTION_FAILED
-                    return true
+                    return
                 end
                 -- else: still querying, yield to event loop
 
@@ -192,9 +196,10 @@ function M.new(adapter, config)
                     self.execution_status = "error"
                     self:_record_statement_result(self.current_statement_index, "error", nil, self.result_error)
                     self.state = M.EXECUTION_FAILED
-                    return true
+                    return
                 end
                 self.state = M.FETCHING
+                return self:_advance()
 
             elseif self.state == M.FETCHING then
                 -- Consume rows up to the budget
@@ -229,7 +234,7 @@ function M.new(adapter, config)
                 end
 
                 -- Budget exhausted, yield to event loop
-                return true
+                return
 
             elseif self.state == M.CLOSING_RESULT then
                 -- Record the statement result
@@ -259,24 +264,25 @@ function M.new(adapter, config)
                 else
                     self.state = M.STATEMENT_COMPLETE
                 end
+                return self:_advance()
 
             elseif self.state == M.DRAINING then
                 -- Wait for adapter to finish draining
                 local adapter_state = self.adapter:state()
                 if adapter_state == "READY" then
                     self.state = M.STATEMENT_COMPLETE
-                else
-                    -- Yield to event loop, poll will advance drain
-                    return true
+                    return self:_advance()
                 end
+                -- Yield to event loop, poll will advance drain
 
             elseif self.state == M.STATEMENT_COMPLETE then
                 if self.current_statement_index >= #self.statements then
                     self.state = M.COMPLETE
-                    return true
+                    return
                 end
                 -- More statements to execute
                 self.state = M.CLASSIFYING
+                return self:_advance()
 
             elseif self.state == M.CANCELING then
                 -- QUERYING cancellation: abandon and close connection
@@ -284,22 +290,21 @@ function M.new(adapter, config)
                 self.execution_status = "cancelled"
                 self.needs_reconnect = true
                 self.state = M.RECONNECT_CONFIRM
-                return true
+                return
 
             elseif self.state == M.COMPLETE then
-                return true
+                return
 
             elseif self.state == M.EXECUTION_FAILED then
-                return true
+                return
 
             elseif self.state == M.BLOCKED then
-                return true
+                return
 
             else
                 self.state = M.IDLE
-                return true
+                return
             end
-        end
     end
 
     -- Poll the execution (called once per UI tick).
@@ -308,7 +313,8 @@ function M.new(adapter, config)
         if self.state == M.QUERYING or self.state == M.DRAINING then
             -- Poll the adapter
             self.adapter:poll()
-            return self:_advance()
+            self:_advance()
+            return true
         end
         return false
     end
@@ -375,6 +381,11 @@ function M.new(adapter, config)
     function self:is_running()
         return self.state == M.QUERYING or self.state == M.FETCHING or
                self.state == M.MATERIALIZING or self.state == M.DRAINING
+    end
+
+    -- Check if the adapter is in read-only mode.
+    function self:is_read_only()
+        return self.adapter and self.adapter._read_only or false
     end
 
     return self

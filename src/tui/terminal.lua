@@ -84,8 +84,9 @@ local TB_KEY_CTRL_U = 0x15
 local TB_KEY_TAB     = 0x09
 local TB_KEY_ENTER   = 0x0D
 local TB_KEY_ESC     = 0x1B
-local TB_KEY_BACKSPACE = 0x08
-local TB_KEY_SPACE   = 0x20
+local TB_KEY_BACKSPACE  = 0x08
+local TB_KEY_BACKSPACE2 = 0x7F
+local TB_KEY_SPACE      = 0x20
 
 -- Modifier constants
 local TB_MOD_ALT = 0x01
@@ -174,8 +175,9 @@ M.KEY_CTRL_U = TB_KEY_CTRL_U
 M.KEY_TAB     = TB_KEY_TAB
 M.KEY_ENTER   = TB_KEY_ENTER
 M.KEY_ESC     = TB_KEY_ESC
-M.KEY_BACKSPACE = TB_KEY_BACKSPACE
-M.KEY_SPACE   = TB_KEY_SPACE
+M.KEY_BACKSPACE  = TB_KEY_BACKSPACE
+M.KEY_BACKSPACE2 = TB_KEY_BACKSPACE2
+M.KEY_SPACE      = TB_KEY_SPACE
 
 M.MOD_ALT = TB_MOD_ALT
 
@@ -298,7 +300,17 @@ function M.poll_event(timeout_ms)
     -- Normalize: if key == 0, it's a character event
     if event.key == 0 and event.ch ~= 0 then
         event.type = "char"
-        event.char = utf8.char(event.ch)
+        -- LuaJIT has no utf8 library; encode codepoint manually
+        local cp = event.ch
+        if cp < 0x80 then
+            event.char = string.char(cp)
+        elseif cp < 0x800 then
+            event.char = string.char(0xC0 + bit.rshift(cp, 6), 0x80 + bit.band(cp, 0x3F))
+        elseif cp < 0x10000 then
+            event.char = string.char(0xE0 + bit.rshift(cp, 12), 0x80 + bit.band(bit.rshift(cp, 6), 0x3F), 0x80 + bit.band(cp, 0x3F))
+        else
+            event.char = string.char(0xF0 + bit.rshift(cp, 18), 0x80 + bit.band(bit.rshift(cp, 12), 0x3F), 0x80 + bit.band(bit.rshift(cp, 6), 0x3F), 0x80 + bit.band(cp, 0x3F))
+        end
     elseif event.type == TB_EVENT_KEY then
         event.type = "key"
     elseif event.type == TB_EVENT_RESIZE then

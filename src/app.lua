@@ -11,6 +11,7 @@ local state = require("src.core.state")
 local syntax = require("src.utils.syntax")
 local sqlite = require("src.db.sqlite")
 local parse = require("src.sql.parse")
+local platform = require("src.platform")
 
 local M = {}
 
@@ -166,47 +167,56 @@ local function draw_grid(term, result, region, theme, page, page_size)
     local columns = result.columns
     local rows = result.rows or {}
     local col_count = #columns
+    local widths = {}
 
-    -- Draw column headers
-    local col_x = region.x + 1
-    for ci, col_name in ipairs(columns) do
-        local name = tostring(col_name)
-        col_x = term.text(col_x, region.y, name, theme.keyword, theme.bg)
-        col_x = col_x + 2 -- spacing
+    local function cell_text(val)
+        if val == nil or (type(val) == "table" and val.is_null) then
+            return "NULL"
+        elseif type(val) == "table" then
+            return "[binary]"
+        end
+        local text = tostring(val)
+        return #text > 30 and text:sub(1, 27) .. "..." or text
     end
 
-    -- Draw separator
-    local sep = string.rep("─", region.width - 2)
-    term.text(region.x + 1, region.y + 1, sep, theme.border, theme.bg)
+    for ci, col_name in ipairs(columns) do
+        widths[ci] = #tostring(col_name)
+    end
+    for _, row in ipairs(rows) do
+        for ci = 1, col_count do
+            widths[ci] = math.max(widths[ci], #cell_text(row[ci]))
+        end
+    end
 
-    -- Draw rows (paged)
+    local function draw_row(row, y, color)
+        local x = region.x + 1
+        for ci = 1, col_count do
+            local text = row and cell_text(row[ci]) or tostring(columns[ci])
+            term.text(x, y, text .. string.rep(" ", widths[ci] - #text), color, theme.bg)
+            x = x + widths[ci]
+            if ci < col_count then
+                term.text(x, y, " | ", theme.border, theme.bg)
+                x = x + 3
+            end
+        end
+    end
+
+    -- Draw aligned column headers and separator.
+    draw_row(nil, region.y, theme.keyword)
+    local separator = {}
+    for ci = 1, col_count do
+        separator[ci] = string.rep("-", widths[ci])
+    end
+    term.text(region.x + 1, region.y + 1, table.concat(separator, "-+-"), theme.border, theme.bg)
+
+    -- Draw rows (paged).
     local start_row = (page - 1) * page_size + 1
     local end_row = math.min(start_row + page_size - 1, #rows)
 
     for ri = start_row, end_row do
-        local row = rows[ri]
         local screen_y = region.y + 2 + (ri - start_row)
         if screen_y >= region.y + region.height then break end
-
-        local col_x = region.x + 1
-        for ci = 1, col_count do
-            local val = row[ci]
-            local text
-            if val == nil or (type(val) == "table" and val.is_null) then
-                text = "NULL"
-                col_x = term.text(col_x, screen_y, text, theme.comment, theme.bg)
-            elseif type(val) == "table" then
-                text = "[binary]"
-                col_x = term.text(col_x, screen_y, text, theme.comment, theme.bg)
-            else
-                text = tostring(val)
-                if #text > 30 then
-                    text = text:sub(1, 27) .. "..."
-                end
-                col_x = term.text(col_x, screen_y, text, theme.fg, theme.bg)
-            end
-            col_x = col_x + 2
-        end
+        draw_row(rows[ri], screen_y, theme.fg)
     end
 
     -- Show row count / limit message
@@ -217,10 +227,10 @@ local function draw_grid(term, result, region, theme, page, page_size)
 end
 
 -- Draw the status bar.
-local function draw_status(term, app_state, region, theme)
+local function draw_status(term, app_state, region, theme, exec, command_mode)
     -- Fill background
     for x = region.x, region.x + region.width - 1 do
-        term.cell(x, region.y, 0, theme.status_fg, theme.status_bg)
+        term.cell(x, region.y, string.byte(" "), theme.status_fg, theme.status_bg)
     end
 
     local parts = {}
@@ -231,7 +241,7 @@ local function draw_status(term, app_state, region, theme)
     end
 
     -- Read-only badge
-    if app_state.execution and app_state.execution.adapter and app_state.execution.adapter._read_only then
+    if exec and exec:is_read_only() then
         table.insert(parts, "READ ONLY")
     end
 
@@ -245,12 +255,14 @@ local function draw_status(term, app_state, region, theme)
         table.insert(parts, string.format("%d ms", app_state.elapsed_ms))
     end
 
+    table.insert(parts, 1, command_mode and "[COMMAND]" or "[INSERT]")
+
     -- Status message
     if app_state.status_message ~= "" then
         table.insert(parts, app_state.status_message)
     end
 
-    local text = " " .. table.concat(parts, " │ ")
+    local text = " " .. table.concat(parts, " | ")
     term.text(region.x, region.y, text, theme.status_fg, theme.status_bg)
 end
 
@@ -268,7 +280,7 @@ local function draw_sidebar(term, app_state, region, theme, adapter)
     else
         status_color = terminal.RED
     end
-    term.text(region.x + 1, region.y + 1, "● " .. (app_state.connection_name or "none"), status_color, theme.bg)
+    term.text(region.x + 1, region.y + 1, "* " .. (app_state.connection_name or "none"), status_color, theme.bg)
 
     -- Tables
     if adapter and app_state.connection_status == "connected" then
@@ -284,7 +296,7 @@ end
 -- Draw "terminal too small" message.
 local function draw_too_small(term)
     term.clear()
-    local msg = "Terminal too small. Please resize to at least 80×24."
+    local msg = "Terminal too small. Please resize to at least 80x24."
     local w = term.width()
     local h = term.height()
     local x = math.floor((w - #msg) / 2)
@@ -309,11 +321,6 @@ function M.run(args)
 
     -- Load configuration
     local config = config_loader.load()
-
-    -- Override read-only from CLI
-    if cli.read_only then
-        -- Will be applied to the adapter
-    end
 
     -- Select connection
     local connection_name = cli.connection
@@ -396,10 +403,14 @@ function M.run(args)
     local grid_page = 1
     local grid_page_size = config.general.default_page_size or 100
     local last_result = nil
+    local exec_start_ms = nil
+    local result_consumed = true
 
     -- History
     local history = {}
     local history_index = 0
+    local command_mode = false
+    local command_buffer = ""
 
     -- Record history entries
     exec.on_history_entry = function(text)
@@ -415,41 +426,105 @@ function M.run(args)
         local key = event.key
         local ch = event.char
 
+        -- Termbox reports printable keys through ch and control/navigation keys
+        -- through key. Some terminals report control keys through ch instead.
+        local function pressed(expected)
+            return key == expected or event.ch == expected
+        end
+        local enter = pressed(terminal.KEY_ENTER)
+        local escape = pressed(terminal.KEY_ESC)
+        local backspace = pressed(terminal.KEY_BACKSPACE)
+            or key == terminal.KEY_BACKSPACE2
+            or event.ch == 0x7f
+
+        -- Command mode: ':' followed by a command and Enter.
+        if command_mode then
+            if escape then
+                command_mode = false
+                command_buffer = ""
+                app_state.status_message = ""
+                return
+            elseif enter then
+                local command = command_buffer:match("^%s*(.-)%s*$")
+                if command == "q" or command == "quit" or command == "q!" then
+                    loop:stop()
+                elseif command == "reconnect" then
+                    if exec.state == execution.RECONNECT_CONFIRM and exec:confirm_reconnect() then
+                        local ok, err = adapter:connect(connection_config)
+                        if ok then
+                            app_state.connection_status = "connected"
+                            app_state.status_message = "Reconnected"
+                        else
+                            app_state.status_message = "Reconnect failed: " .. (err or "?")
+                        end
+                    else
+                        app_state.status_message = "Nothing to reconnect"
+                    end
+                elseif command == "dismiss" then
+                    if exec.state == execution.RECONNECT_CONFIRM then
+                        exec:confirm_reconnect()
+                        app_state.status_message = "Continuing on abandoned connection"
+                    else
+                        app_state.status_message = "Nothing to dismiss"
+                    end
+                elseif command == "help" then
+                    app_state.status_message = ":q  :reconnect  :dismiss  :help"
+                else
+                    app_state.status_message = "Unknown command: :" .. command
+                end
+                command_mode = false
+                command_buffer = ""
+                return
+            elseif backspace then
+                command_buffer = command_buffer:sub(1, -2)
+                return
+            elseif event.type == "char" and ch then
+                -- The colon is already shown as the command prompt, but accept
+                -- it if the user types it after Esc.
+                if not (command_buffer == "" and ch == ":") then
+                    command_buffer = command_buffer .. ch
+                end
+                return
+            end
+            return
+        end
+
+        -- ':' or Esc enters command mode from the editor.
+        if app_state.focus == "editor"
+            and ((event.type == "char" and ch == ":") or escape) then
+            command_mode = true
+            command_buffer = ""
+            app_state.status_message = ""
+            return
+        end
+
         -- Ctrl+R: execute query
-        if key == terminal.KEY_CTRL_R then
+        if pressed(terminal.KEY_CTRL_R) then
             local text = ed:get_text()
             if text and text:match("%S") then
-                local start_time = os.clock()
+                exec_start_ms = platform.monotonic_ms()
+                result_consumed = false
                 exec:execute(text)
-                local elapsed = (os.clock() - start_time) * 1000
-                app_state.elapsed_ms = math.floor(elapsed)
-                -- Get result after execution completes
-                local result = exec:get_result()
-                if result then
-                    last_result = result
-                    app_state.row_count = result.row_count or 0
-                    if result.error then
-                        app_state.status_message = result.error
-                    else
-                        app_state.status_message = ""
-                    end
-                end
+                app_state.status_message = "Running..."
                 grid_page = 1
             end
             return
         end
 
         -- Ctrl+C: cancel
-        if key == terminal.KEY_CTRL_C then
+        if pressed(terminal.KEY_CTRL_C) then
             if exec:is_running() then
                 exec:cancel()
                 app_state.status_message = "Cancelled"
+            elseif exec.state == execution.RECONNECT_CONFIRM then
+                -- Stay on RECONNECT_CONFIRM; user must choose via :reconnect / :dismiss
+                app_state.status_message = "Connection abandoned — :reconnect or :dismiss"
             end
             return
         end
 
         -- Ctrl+P: history previous
-        if key == terminal.KEY_CTRL_P then
+        if pressed(terminal.KEY_CTRL_P) then
             if history_index < #history then
                 history_index = history_index + 1
                 ed:set_text(history[history_index])
@@ -458,7 +533,7 @@ function M.run(args)
         end
 
         -- Ctrl+N: history next
-        if key == terminal.KEY_CTRL_N then
+        if pressed(terminal.KEY_CTRL_N) then
             if history_index > 1 then
                 history_index = history_index - 1
                 ed:set_text(history[history_index])
@@ -470,7 +545,7 @@ function M.run(args)
         end
 
         -- Tab: cycle focus
-        if key == terminal.KEY_TAB then
+        if pressed(terminal.KEY_TAB) then
             if app_state.focus == "editor" then
                 app_state.focus = "grid"
             elseif app_state.focus == "grid" then
@@ -482,40 +557,40 @@ function M.run(args)
         end
 
         -- Esc: focus sidebar
-        if key == terminal.KEY_ESC then
+        if escape then
             app_state.focus = "sidebar"
             return
         end
 
         -- Editor keys (when editor has focus)
         if app_state.focus == "editor" then
-            if key == terminal.KEY_ARROW_UP then
+            if pressed(terminal.KEY_ARROW_UP) then
                 ed:move_up()
-            elseif key == terminal.KEY_ARROW_DOWN then
+            elseif pressed(terminal.KEY_ARROW_DOWN) then
                 ed:move_down()
-            elseif key == terminal.KEY_ARROW_LEFT then
+            elseif pressed(terminal.KEY_ARROW_LEFT) then
                 ed:move_left()
-            elseif key == terminal.KEY_ARROW_RIGHT then
+            elseif pressed(terminal.KEY_ARROW_RIGHT) then
                 ed:move_right()
-            elseif key == terminal.KEY_HOME then
+            elseif pressed(terminal.KEY_HOME) then
                 ed:move_home()
-            elseif key == terminal.KEY_END then
+            elseif pressed(terminal.KEY_END) then
                 ed:move_end()
-            elseif key == terminal.KEY_ENTER then
+            elseif enter then
                 ed:insert_newline()
-            elseif key == terminal.KEY_BACKSPACE then
+            elseif backspace then
                 ed:backspace()
-            elseif key == terminal.KEY_DELETE then
+            elseif pressed(terminal.KEY_DELETE) then
                 ed:delete()
-            elseif key == terminal.KEY_CTRL_A then
+            elseif pressed(terminal.KEY_CTRL_A) then
                 ed:move_home()
-            elseif key == terminal.KEY_CTRL_E then
+            elseif pressed(terminal.KEY_CTRL_E) then
                 ed:move_end()
-            elseif key == terminal.KEY_CTRL_K then
+            elseif pressed(terminal.KEY_CTRL_K) then
                 ed:kill_line()
-            elseif key == terminal.KEY_CTRL_U then
+            elseif pressed(terminal.KEY_CTRL_U) then
                 ed:kill_line_start()
-            elseif key == terminal.KEY_CTRL_L then
+            elseif pressed(terminal.KEY_CTRL_L) then
                 ed:clear_line()
             elseif event.type == "char" and ch then
                 ed:insert_char(ch)
@@ -546,16 +621,36 @@ function M.run(args)
             return
         end
 
-        -- Global: q to quit
-        if ch == "q" or ch == "Q" then
-            if not exec:is_running() then
-                loop:stop()
-            end
-        end
     end
 
     -- Render function
     loop.render_fn = function()
+        -- The Execution may finish on a later event-loop tick. Pick up the
+        -- result once per execution (transition-gated, not steady-state, so
+        -- later status messages aren't clobbered every frame).
+        if result_consumed == false
+            and (exec.state == execution.COMPLETE or exec.state == execution.EXECUTION_FAILED)
+            and not command_mode then
+            local result = exec:get_result()
+            last_result = result
+            app_state.row_count = result.row_count or 0
+            app_state.status_message = result.error or ""
+            if exec_start_ms then
+                app_state.elapsed_ms = platform.monotonic_ms() - exec_start_ms
+                exec_start_ms = nil
+            end
+            result_consumed = true
+        end
+
+        -- Reconnect confirmation prompt (spec §4b: cancel → reconnect confirm).
+        if exec.state == execution.RECONNECT_CONFIRM and not command_mode then
+            app_state.status_message = "Connection abandoned — :reconnect or :dismiss"
+        end
+
+        if command_mode then
+            app_state.status_message = ":" .. command_buffer
+        end
+
         terminal.clear()
 
         local regions = layout.calculate(terminal, config)
@@ -574,7 +669,7 @@ function M.run(args)
         draw_grid(terminal, last_result, regions.grid, theme, grid_page, grid_page_size)
 
         -- Draw status bar
-        draw_status(terminal, app_state, regions.status, theme)
+        draw_status(terminal, app_state, regions.status, theme, exec, command_mode)
 
         terminal.present()
     end

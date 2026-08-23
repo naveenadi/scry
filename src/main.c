@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 
     /* Set up package path to find src/ modules */
     lua_getglobal(L, "package");
-    lua_pushstring(L, "src/?.lua;?.lua");
+    lua_pushstring(L, "src/?.lua;?.lua;?/init.lua");
     lua_setfield(L, -2, "path");
     lua_pop(L, 1);
 

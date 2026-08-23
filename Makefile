@@ -9,6 +9,7 @@ TERMBOX_H   = vendor/termbox2.h
 
 CC         ?= cc
 CFLAGS     ?= -O2
+export MACOSX_DEPLOYMENT_TARGET = $(shell sw_vers -productVersion | cut -d. -f1-2)
 SQLITE_CFLAGS = $(shell pkg-config --cflags sqlite3 2>/dev/null)
 SQLITE_LIBS   = $(shell pkg-config --libs sqlite3 2>/dev/null)
 
@@ -28,8 +29,7 @@ vendor:
 
 # --- LuaJIT ---
 $(LUAJIT_LIB): $(LUAJIT_DIR)
-	cd $(LUAJIT_DIR) && $(MAKE) -j$$(sysctl -n hw.ncpu) \
-	  MACOSX_DEPLOYMENT_TARGET=$$(sw_vers -productVersion | cut -d. -f1-2)
+	cd $(LUAJIT_DIR) && $(MAKE) -j$$(sysctl -n hw.ncpu)
 
 # --- LuaSQL objects (patched to avoid luaL_setfuncs duplicate) ---
 src/luasql.o: $(LUASQL_DIR)/luasql.c
