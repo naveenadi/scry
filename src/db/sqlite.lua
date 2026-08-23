@@ -64,7 +64,9 @@ function M.new()
         self._cursor = cursor
 
         if exec_err then
-            self._state = adapter.ERROR
+            -- Return to READY so the next query can proceed.
+            -- The error is stored in _error for the caller to read.
+            self._state = adapter.READY
             self._error = tostring(exec_err)
             return false, self._error
         end

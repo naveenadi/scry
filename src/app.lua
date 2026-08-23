@@ -160,7 +160,11 @@ end
 -- Draw the results grid.
 local function draw_grid(term, result, region, theme, page, page_size)
     if not result or not result.columns then
-        term.text(region.x + 1, region.y, "No results", theme.comment, theme.bg)
+        if result and result.error then
+            term.text(region.x + 1, region.y, "Error: " .. result.error, theme.error_fg, theme.bg)
+        else
+            term.text(region.x + 1, region.y, "No results", theme.comment, theme.bg)
+        end
         return
     end
 
