@@ -1,0 +1,135 @@
+tests/integration/sqlite_test.lua
+  s_e045b6f9dffb95::t_abdeeca78662e4 139
+  s_e045b6f9dffb95::t_836165119bde18 10-11
+  s_e045b6f9dffb95::t_9f1a65c1a2a281 18,21-22,26,31-32,35-36,39,42-44,47,50,54,62,65,69,80,84,92-95,99,102,106,110-113,117,123-124,130,134-135
+  s_066ecf72280a38::t_e11c13414ee7fb 125
+scry-spec.md
+  s_066ecf72280a38::t_ed869b72b94ebe 523,525,601,605,607-611,637-638,654-657
+Makefile
+  s_591be7f30bee57::t_f94a92e65ea719 12,32
+tests/config/merge_test.lua
+  s_e045b6f9dffb95::t_9f1a65c1a2a281 11,14,17,20,23,27-28,31,35-36,39,43-44,47,60-62,65,78-80,83,95-97,100,103
+  s_e045b6f9dffb95::t_dfce767492eca1 5
+  s_e045b6f9dffb95::t_cd649c78094bf9 106
+tests/utils_syntax_test.lua
+  s_066ecf72280a38::t_dd485970c28b68 11-16
+  s_35a4ff11c18c74::t_ffc989d5be88be 1-10,17
+tests/editor_test.lua
+  s_35a4ff11c18c74::t_8bdcaa484cc0a4 1-18,26-30,37
+  s_066ecf72280a38::t_10f92860ec0f54 19-25
+  s_35a4ff11c18c74::t_65d0cc4a7b944c 31-36
+.gitignore
+  s_066ecf72280a38::t_ecbe9f963dea9c 44
+  s_066ecf72280a38::t_47e7f6d47eefb1 42-43
+src/main.c
+  s_8f25356eaf47bc::t_86d47578c2366c 53
+src/core/execution.lua
+  s_e045b6f9dffb95::t_9857c60fbf11a7 102-104,110,114,120,139,143,153,156,167,173,177,199,202,237,267,274,276,281,285,293,296,299,302,306,316-317
+  s_e045b6f9dffb95::t_62ca85467ab9ec 386-390
+src/platform/windows.lua
+  s_e045b6f9dffb95::t_365a0ac8fa6ff2 6-10,48-55,57-62,114-118
+  s_e045b6f9dffb95::t_6efbdb4351d49f 56
+  s_e045b6f9dffb95::t_c9c9fb692d62f7 119
+README.md
+  s_066ecf72280a38::t_d3175eb68340b8 1-9
+src/sql/parse.lua
+  s_e045b6f9dffb95::t_e50e2392fe6ae4 46-47,49
+tests/integration/execution_test.lua
+  s_e045b6f9dffb95::t_95b1033862c44e 196
+  s_e045b6f9dffb95::t_ab653569253a14 5
+  s_e045b6f9dffb95::t_9f1a65c1a2a281 85,88,91,95,98,105,111,113,116,143-144,147,150,156-157,160,165,168,173,177-179,182,186,189,193
+src/utils/syntax.lua
+  s_066ecf72280a38::t_d73cd9fed8fa59 186-190
+src/tui/terminal.lua
+  s_066ecf72280a38::t_665f42fd8cda6a 87-89,178-180
+  s_e045b6f9dffb95::t_a201c00319a4d8 303-313
+tests/sql/parse_test.lua
+  s_e045b6f9dffb95::t_dc0793029197ca 274
+  s_e045b6f9dffb95::t_9f1a65c1a2a281 11,13-14,17,19-21,24,26-27,30,32,35,37,40,42,45,47,50,52,55,57,60,62-64,67,69-70,73,75-78,81,83,86,88,91,93,96,98,101,103,108,110-112,115,117-118,121,123-124,127,129-130,133,135-136,139,141-142,145,147-148,151,153-154,157,159-160,163,165-166,169,171-172,175,177-178,181,183-184,187,189,192,194-195,198,200-201,204,206-207,210,212-213,216,218,221,223,226,228,231,233,236,238,241,243-244,247,249,254-255,258-259,262-263,266-267,270-271
+  s_e045b6f9dffb95::t_4e9a503284120a 5
+src/platform/unix.lua
+  s_e045b6f9dffb95::t_19a9202928361e 316
+  s_e045b6f9dffb95::t_d1f770e38dc7d7 67-69
+  s_e045b6f9dffb95::t_2ebe9f5399f231 70-75,238,240-254,311-315
+  s_e045b6f9dffb95::t_c176f908bdf26d 317-318
+src/app.lua
+  s_e045b6f9dffb95::t_1100409b295260 508
+  s_e045b6f9dffb95::t_827c4c96d05428 244
+  s_e045b6f9dffb95::t_63160c6d168893 505,519-521
+  s_066ecf72280a38::t_7f0079df474fe3 170-180,183-188,191-210,212,219
+  s_e045b6f9dffb95::t_1951fa0f470f15 641
+  s_35a4ff11c18c74::t_2ce7be9cbe1ac0 436-438
+  s_35a4ff11c18c74::t_8e898d3856b0e8 429-435,439,442,447,470,478,502,515,527,536,548,560,567,569,571,573,575,577,579,581,583,585,587,589,591,593
+  s_e045b6f9dffb95::t_9d7e8052cf069a 14,406-407,628-633,638-640,642-647
+  s_e045b6f9dffb95::t_172ed9e21bd8b1 449,451-469,471
+  s_066ecf72280a38::t_c890932907d98a 230,259,482-486,497,672
+  s_35a4ff11c18c74::t_03c1e79a687bac 233,265,283,299,634-637,652-653
+  s_35a4ff11c18c74::t_f170e6a30adddb 412-413,440-441,443-446,448,450,472-477,479-481,487,495-496,498-500,648-651
+  s_35a4ff11c18c74::t_4318d2eddacea0 488-491
+  s_e045b6f9dffb95::t_d6141c339a0c77 506
+  s_066ecf72280a38::t_7167be9b5c27d6 258,492-494
+.scry_config.lua
+  s_fac7214ef4a4ab::t_629be5ce3ea7ab 1-9
+src/db/sqlite.lua
+  s_066ecf72280a38::t_2eeb39d8bac7c1 155
+  s_066ecf72280a38::t_a92a71754f29a4 148-151
+  s_066ecf72280a38::t_010a622fceb0fe 152-153
+tests/test_helper.lua
+  s_e045b6f9dffb95::t_c02d8569553e87 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "8391d9ba9cc2e17e1b77000a31bc4845d4660e6c",
+  "prompts": {},
+  "sessions": {
+    "s_066ecf72280a38": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02f32-1425-7f2e-91b7-33a12e34605a",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_35a4ff11c18c74": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02110-d31f-70ab-acb9-1ebc2c4a744c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_591be7f30bee57": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02f37-30e6-7198-b0cb-2ff950d66e30",
+        "model": "ox-alpha"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_8f25356eaf47bc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02621-3f40-782e-b783-c1eed51610f6",
+        "model": "ox-alpha"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_e045b6f9dffb95": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02162-1452-7569-be21-fbbda55a53f4",
+        "model": "ox-alpha"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_fac7214ef4a4ab": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a020bc-9e42-739b-ad72-8039bde1b535",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
