@@ -1,0 +1,22 @@
+src/db/sqlite.lua
+  s_b85bcdda606f39::t_238eba6bf9533b 67,69
+  s_b85bcdda606f39::t_63cb632a6c4e3c 68
+src/app.lua
+  s_b85bcdda606f39::t_ca0f6be06d8875 163-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "d1f0ccac167b83d510e997e8948fce4de1e98995",
+  "prompts": {},
+  "sessions": {
+    "s_b85bcdda606f39": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03061-1f14-70b9-87d5-3b135f20d3c3",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
