@@ -30,6 +30,35 @@ static void preload_sqlite3(lua_State *L) {
 int main(int argc, char **argv) {
     lua_State *L;
 
+    /* --run <file>: execute a Lua file directly (for testing with built-in modules) */
+    if (argc >= 3 && strcmp(argv[1], "--run") == 0) {
+        L = luaL_newstate();
+        if (!L) { fprintf(stderr, "error: failed to create Lua state\n"); return 1; }
+        luaL_openlibs(L);
+        preload_sqlite3(L);
+
+        /* Push argv (skip --run and the filename) */
+        lua_newtable(L);
+        for (int i = 2; i < argc; i++) {
+            lua_pushstring(L, argv[i]);
+            lua_rawseti(L, -2, i - 2);
+        }
+        lua_setglobal(L, "arg");
+
+        lua_getglobal(L, "package");
+        lua_pushstring(L, "src/?.lua;?.lua;?/init.lua");
+        lua_setfield(L, -2, "path");
+        lua_pop(L, 1);
+
+        if (luaL_dofile(L, argv[2]) != 0) {
+            fprintf(stderr, "error: %s\n", lua_tostring(L, -1));
+            lua_close(L);
+            return 1;
+        }
+        lua_close(L);
+        return 0;
+    }
+
     L = luaL_newstate();
     if (!L) {
         fprintf(stderr, "error: failed to create Lua state\n");

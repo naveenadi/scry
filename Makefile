@@ -9,6 +9,7 @@ LUAJIT_INC = $(LUAJIT_DIR)/src
 LUAJIT_LIB = $(LUAJIT_INC)/libluajit.a
 LUASQL_DIR = vendor/luasql/src
 TERMBOX_H  = vendor/termbox2.h
+LUAJIT_BIN = $(LUAJIT_DIR)/src/luajit
 VENDOR_STAMP = vendor/.scry-pinned
 
 CC ?= cc
@@ -118,9 +119,15 @@ debug: clean
 release: clean
 	$(MAKE) CFLAGS='-O2' scry
 
-test: scry
+test: scry $(LUAJIT_BIN)
 	@echo 'Running tests...'
-	@for f in tests/**/*_test.lua; do echo "  $$f"; ./scry "$$f" || exit 1; done
+	@for f in tests/**/*_test.lua; do \
+		echo "  $$f"; \
+		case "$$f" in \
+			tests/integration/*) ./scry --run "$$f" || exit 1 ;; \
+			*) $(LUAJIT_BIN) "$$f" || exit 1 ;; \
+		esac; \
+	done
 	@echo 'All tests passed.'
 
 check: test

@@ -130,9 +130,11 @@ end)
 h.test("error on bad SQL", function()
     local db = sqlite.new()
     db:connect({ database = ":memory:" })
+    -- LuaSQL's execute() returns (nil, error_message) for invalid SQL.
     local ok, err = db:send_query("INVALID SQL SYNTAX")
     h.assert_true(not ok, "should fail")
     h.assert_true(err ~= nil, "error message present")
+    h.assert_true(err:find("syntax error") ~= nil, "error mentions syntax")
     db:close()
 end)
 

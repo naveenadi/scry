@@ -56,16 +56,16 @@ function M.new()
         self._error = nil
         self._columns = nil
 
-        -- SQLite: prepare the statement (non-blocking)
-        -- The actual execution happens in get_result()
-        -- For simplicity in Phase 1, we execute directly
-        local ok, err = pcall(function()
-            self._cursor = self._conn:execute(sql)
-        end)
+        -- SQLite: execute the statement.
+        -- LuaSQL's execute() returns cursor, err_or_nil.
+        -- For non-SELECT (INSERT/UPDATE/etc.) cursor is nil but err is also nil.
+        -- For errors (bad SQL, missing table) cursor is nil and err is set.
+        local cursor, exec_err = self._conn:execute(sql)
+        self._cursor = cursor
 
-        if not ok then
+        if exec_err then
             self._state = adapter.ERROR
-            self._error = tostring(err)
+            self._error = tostring(exec_err)
             return false, self._error
         end
 
