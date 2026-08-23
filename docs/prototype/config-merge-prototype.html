@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scry config merge – prototype</title>
+<style>
+  :root { color-scheme: light; --ink:#1f2933; --muted:#667085; --line:#d9dee7; --paper:#fff; --wash:#f5f7fa; --accent:#2563eb; --accent-wash:#eaf1ff; --good:#087443; --warn:#9a6700; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--wash); color:var(--ink); font:16px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:40px 22px 64px; }
+  h1,h2,h3 { line-height:1.2; margin:0 0 10px; }
+  h1 { font-size:clamp(28px,4vw,42px); letter-spacing:-.03em; }
+  h2 { font-size:22px; }
+  h3 { font-size:17px; }
+  p { margin:0 0 12px; }
+  .intro,.panel,.scenario { background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:22px; box-shadow:0 3px 14px #1822300b; }
+  .intro { border-top:4px solid var(--accent); margin-bottom:18px; }
+  .eyebrow { color:var(--accent); font-size:12px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; margin-bottom:8px; }
+  .muted { color:var(--muted); }
+  .layout { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr); gap:18px; align-items:start; }
+  .stack { display:grid; gap:18px; }
+  .state-grid { display:grid; gap:12px; }
+  .state-row { display:grid; grid-template-columns:150px 1fr; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); }
+  .state-row:last-child { border-bottom:0; }
+  .state-label { color:var(--muted); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  code, pre { font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  pre { margin:0; padding:14px; background:#101828; color:#e6edf5; border-radius:9px; overflow:auto; }
+  .buttons { display:flex; flex-wrap:wrap; gap:8px; }
+  button { border:1px solid #b8c5d8; border-radius:8px; background:#fff; color:var(--ink); cursor:pointer; font:inherit; padding:9px 12px; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover { background:#1d4ed8; color:#fff; }
+  .action-note { min-height:24px; color:var(--good); font-size:14px; margin-top:12px; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0; }
+  .tabs button.active { background:var(--accent-wash); border-color:var(--accent); color:var(--accent); font-weight:700; }
+  .scenario { margin-top:18px; }
+  .steps { display:grid; gap:8px; margin-top:14px; }
+  .step { display:flex; align-items:center; gap:10px; }
+  .step span { color:var(--muted); font-size:14px; }
+  .legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+  .chip { border-radius:99px; background:var(--accent-wash); color:#174ea6; font-size:13px; padding:4px 9px; }
+  @media (max-width:760px) { .layout { grid-template-columns:1fr; } .state-row { grid-template-columns:1fr; gap:3px; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="intro">
+    <div class="eyebrow">Throwaway prototype · Scry config behavior</div>
+    <h1>Which setting wins?</h1>
+    <p>This demo answers one question: <strong>does Scry’s config layering feel predictable when defaults, a global file, and a project file meet?</strong></p>
+    <p class="muted">Watch the difference between ordinary settings, which merge by key, and named connections, where a project entry replaces the global entry completely.</p>
+    <div class="legend"><span class="chip">defaults</span><span class="chip">global config</span><span class="chip">nearest project config</span></div>
+  </section>
+
+  <div class="layout">
+    <section class="panel">
+      <h2>Current merged configuration</h2>
+      <p id="change" class="action-note" aria-live="polite">Starting from defaults.</p>
+      <div id="state" class="state-grid"></div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <h2>Free play</h2>
+        <p class="muted">Apply a layer or reset. Every action recomputes the complete result.</p>
+        <div class="buttons">
+          <button class="primary" data-action="reset">Reset</button>
+          <button data-action="global">Apply global config</button>
+          <button data-action="project">Apply project config</button>
+          <button data-action="project-connection">Replace project connection</button>
+          <button data-action="clear-project">Remove project connection</button>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Layer inputs</h2>
+        <pre id="inputs"></pre>
+      </section>
+    </div>
+  </div>
+
+  <section class="scenario">
+    <h2>Guided walkthroughs</h2>
+    <p class="muted">Each tab resets the model. Press the steps in order and decide whether the result matches what you would expect as a user.</p>
+    <div class="tabs" role="tablist">
+      <button class="active" data-tab="settings">Settings merge</button>
+      <button data-tab="connections">Connection safety</button>
+      <button data-tab="discovery">Project discovery</button>
+    </div>
+    <div id="scenario-copy"></div>
+    <div id="steps" class="steps"></div>
+  </section>
+</main>
+<script>
+/* Pure prototype logic. The page below only dispatches actions and renders state. */
+const defaults = {
+  general: { theme: "dark", sidebar_width: 30, default_page_size: 100 },
+  query_editor: { syntax_highlighting: true, history_limit: 1000 },
+  keybindings: { quit: "q", run_query: "Ctrl-r" },
+  connections: {}
+};
+const globalConfig = {
+  general: { theme: "light", connect_timeout_seconds: 10 },
+  query_editor: { history_limit: 500 },
+  connections: {
+    local_dev: { type: "sqlite", database: "~/dev.db", read_only: false },
+    reporting: { type: "postgres", host: "reports.example", port: 5432, password: "global-secret" }
+  }
+};
+const projectConfig = {
+  general: { sidebar_width: 36 },
+  keybindings: { quit: "Q" },
+  connections: { reporting: { type: "postgres", host: "localhost", database: "reporting_dev" } }
+};
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function merge(base, override) {
+  const result = clone(base || {});
+  for (const [key, value] of Object.entries(override || {})) {
+    if (key === "connections") {
+      result.connections = { ...(result.connections || {}), ...clone(value) };
+    } else if (value && typeof value === "object" && !Array.isArray(value) && result[key] && typeof result[key] === "object") {
+      result[key] = merge(result[key], value);
+    } else {
+      result[key] = clone(value);
+    }
+  }
+  return result;
+}
+function merged(layers) {
+  return merge(merge(merge({}, layers.defaults), layers.global), layers.project);
+}
+function initialLayers() { return { defaults: clone(defaults), global: {}, project: {} }; }
+let layers = initialLayers();
+let lastChange = "Starting from defaults.";
+
+function apply(action) {
+  if (action === "reset") { layers = initialLayers(); lastChange = "Reset: only defaults are active."; }
+  if (action === "global") { layers.global = clone(globalConfig); lastChange = "Applied the global config: ordinary settings override defaults; connections were added."; }
+  if (action === "project") { layers.project = { general: clone(projectConfig.general), keybindings: clone(projectConfig.keybindings) }; lastChange = "Applied the project settings: sidebar width and quit key override their earlier values."; }
+  if (action === "project-connection") { layers.project.connections = clone(projectConfig.connections); lastChange = "Applied the project reporting connection: it replaces the global reporting entry wholesale."; }
+  if (action === "clear-project") { delete layers.project.connections; lastChange = "Removed the project reporting connection: the global reporting entry is visible again."; }
+  render();
+}
+
+const scenarios = {
+  settings: {
+    title: "Do ordinary settings compose?",
+    description: "A project changes only the sidebar width and quit key. Watch whether unrelated defaults and global settings survive.",
+    steps: [
+      ["Start with defaults", "reset"],
+      ["Load the global file", "global"],
+      ["Load the project file", "project"]
+    ]
+  },
+  connections: {
+    title: "Can a project override a connection without leaking secrets?",
+    description: "The global reporting connection has a password and port. The project entry supplies a local host and database but no password. Watch whether those global fields leak through.",
+    steps: [
+      ["Start with defaults", "reset"],
+      ["Load the global file", "global"],
+      ["Load project settings", "project"],
+      ["Load the project reporting connection", "project-connection"]
+    ]
+  },
+  discovery: {
+    title: "What happens when the project connection is removed?",
+    description: "This models the nearest project file no longer defining a reporting connection. Watch the fallback to the global named entry.",
+    steps: [
+      ["Start with defaults", "reset"],
+      ["Load the global file", "global"],
+      ["Load project settings", "project"],
+      ["Load the project reporting connection", "project-connection"],
+      ["Remove the project reporting connection", "clear-project"]
+    ]
+  }
+};
+let activeScenario = "settings";
+let nextStep = 0;
+
+function valueText(value) {
+  if (value && typeof value === "object") return `<pre>${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+  return `<code>${escapeHtml(String(value))}</code>`;
+}
+function escapeHtml(value) { return value.replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch])); }
+function render() {
+  const result = merged(layers);
+  const rows = [
+    ["General", result.general],
+    ["Query editor", result.query_editor],
+    ["Keybindings", result.keybindings],
+    ["Connections", result.connections]
+  ];
+  document.querySelector("#state").innerHTML = rows.map(([label, value]) => `<div class="state-row"><div class="state-label">${label}</div><div>${valueText(value)}</div></div>`).join("");
+  document.querySelector("#inputs").textContent = JSON.stringify({ global: layers.global, project: layers.project }, null, 2);
+  document.querySelector("#change").textContent = lastChange;
+  renderSteps();
+}
+function renderSteps() {
+  const scenario = scenarios[activeScenario];
+  document.querySelector("#scenario-copy").innerHTML = `<h3>${scenario.title}</h3><p class="muted">${scenario.description}</p>`;
+  document.querySelector("#steps").innerHTML = scenario.steps.map(([label, action], index) => `<div class="step"><button ${index !== nextStep ? "disabled" : ""} data-step="${index}" data-action="${action}">${index + 1}. ${label}</button><span>${index < nextStep ? "done" : index === nextStep ? "next" : "waiting"}</span></div>`).join("");
+  document.querySelectorAll("#steps button").forEach(button => button.addEventListener("click", () => { apply(button.dataset.action); nextStep += 1; render(); }));
+}
+document.querySelectorAll("[data-action]").forEach(button => button.addEventListener("click", () => { if (!button.dataset.step) apply(button.dataset.action); }));
+document.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", () => {
+  activeScenario = button.dataset.tab; nextStep = 0; layers = initialLayers(); lastChange = "Scenario reset: only defaults are active.";
+  document.querySelectorAll("[data-tab]").forEach(tab => tab.classList.toggle("active", tab === button));
+  render();
+}));
+render();
+</script>
+</body>
+</html>

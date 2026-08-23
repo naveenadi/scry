@@ -152,9 +152,16 @@ function M.split_statements(buffer_text)
 
         elseif tok.state == M.STATE_BACKTICK then
             if ch == '`' then
-                tok.state = M.STATE_NORMAL
+                -- MySQL escapes a backtick in an identifier by doubling it.
+                if i + 1 <= len and buffer_text:sub(i + 1, i + 1) == '`' then
+                    i = i + 2
+                else
+                    tok.state = M.STATE_NORMAL
+                    i = i + 1
+                end
+            else
+                i = i + 1
             end
-            i = i + 1
 
         elseif tok.state == M.STATE_DOLLAR_QUOTE then
             if ch == '$' then
@@ -323,12 +330,16 @@ function M._tokenize_for_classification(sql_text)
             end
 
         elseif ch == '`' then
-            -- Backtick-quoted identifier: skip to closing backtick
+            -- Backtick-quoted identifier: doubled backticks are escaped.
             i = i + 1
             while i <= len do
                 if sql_text:sub(i, i) == '`' then
-                    i = i + 1
-                    break
+                    if i + 1 <= len and sql_text:sub(i + 1, i + 1) == '`' then
+                        i = i + 2
+                    else
+                        i = i + 1
+                        break
+                    end
                 else
                     i = i + 1
                 end

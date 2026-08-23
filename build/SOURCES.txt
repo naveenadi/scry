@@ -1,0 +1,28 @@
+Scry reproducible dependency pins
+
+LuaJIT:
+  repository = https://github.com/LuaJIT/LuaJIT
+  branch     = v2.1
+  commit     = 1ee778a4e37122d8ca7d5733c590a47dafd6b15c
+
+LuaSQL:
+  repository = https://github.com/lunarmodules/luasql
+  branch     = master
+  commit     = 491fea76b9d9ee613fcd7de6b8a1c902e3668d11 (contains async I/O PR #201)
+
+MariaDB Connector/C:
+  repository = https://github.com/mariadb-corporation/mariadb-connector-c
+  version/commit = v3.4.8 / 46880b003653a000e9588bd73c8b1dd65088c6862 (required by MySQL target)
+
+libpq:
+  distribution = system package (required by PostgreSQL target)
+  version = recorded by the PostgreSQL build environment
+
+libsqlite3:
+  distribution = system package
+  version = recorded by pkg-config on the build host
+
+Terminal backend:
+  name = termbox2
+  repository = https://github.com/termbox/termbox2
+  version/commit = v2.5.0 / 9b5a5da862c06c554148c14fd38d2f796be22d57

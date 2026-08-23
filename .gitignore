@@ -51,4 +51,7 @@ src/ls_sqlite3.o
 vendor/LuaJIT/
 vendor/luasql/
 vendor/termbox2.h
+vendor/.scry-pinned
+/build/*
+!/build/SOURCES.txt
 

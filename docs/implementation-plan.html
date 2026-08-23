@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scry — Phase 1 MVP Implementation Plan</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231e293b'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='32' fill='%2338bdf8'%3E%F0%9F%94%AD%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Fragment+Mono:wght@400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.1.8/dist/mermaid-layout-elk.min.js"></script>
+<style>
+:root {
+  --font-body: 'Bricolage Grotesque', system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', 'SF Mono', Consolas, monospace;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --bg: #f4f1ec;
+  --surface: #ffffff;
+  --surface2: #eae5dd;
+  --surface-elevated: #fff;
+  --border: rgba(0,0,0,0.08);
+  --border-bright: rgba(0,0,0,0.16);
+  --text: #1e293b;
+  --text-dim: #64748b;
+  --blue: #0369a1;
+  --blue-dim: rgba(3,105,161,0.08);
+  --teal: #0d9488;
+  --teal-dim: rgba(13,148,136,0.08);
+  --amber: #b45309;
+  --amber-dim: rgba(180,83,9,0.08);
+  --red: #dc2626;
+  --red-dim: rgba(220,38,38,0.07);
+  --green: #15803d;
+  --green-dim: rgba(21,128,61,0.07);
+  --done: #15803d;
+  --done-dim: rgba(21,128,61,0.08);
+  --partial: #b45309;
+  --partial-dim: rgba(180,83,9,0.08);
+  --missing: #dc2626;
+  --missing-dim: rgba(220,38,38,0.07);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #273548;
+    --surface-elevated: #334155;
+    --border: rgba(255,255,255,0.06);
+    --border-bright: rgba(255,255,255,0.12);
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --blue: #38bdf8;
+    --blue-dim: rgba(56,189,248,0.12);
+    --teal: #2dd4bf;
+    --teal-dim: rgba(45,212,191,0.1);
+    --amber: #fbbf24;
+    --amber-dim: rgba(251,191,36,0.1);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.1);
+    --green: #4ade80;
+    --green-dim: rgba(74,222,128,0.1);
+    --done: #4ade80;
+    --done-dim: rgba(74,222,128,0.1);
+    --partial: #fbbf24;
+    --partial-dim: rgba(251,191,36,0.1);
+    --missing: #f87171;
+    --missing-dim: rgba(248,113,113,0.1);
+  }
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 15% 0%, var(--blue-dim) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 100%, var(--teal-dim) 0%, transparent 40%);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+a { color: var(--blue); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { opacity: 0.8; }
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 180px 1fr; gap: 0 40px; padding: 32px 24px; }
+.main { min-width: 0; }
+.toc { position: sticky; top: 24px; align-self: start; padding: 14px 0; grid-row: 1 / -1; max-height: calc(100dvh - 48px); overflow-y: auto; }
+.toc::-webkit-scrollbar { width: 3px; }
+.toc::-webkit-scrollbar-thumb { background: var(--surface-elevated); border-radius: 2px; }
+.toc-title { font-family: var(--font-mono); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--text-dim); padding: 0 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border); }
+.toc a { display: block; padding: 5px 0 5px 10px; font-size: 12px; font-weight: 500; color: var(--text-dim); text-decoration: none; border-left: 2px solid transparent; transition: all 0.15s ease; }
+.toc a:hover, .toc a.active { color: var(--blue); border-left-color: var(--blue); background: var(--blue-dim); border-radius: 0 4px 4px 0; }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: 1fr; padding: 16px; gap: 0; }
+  .toc { position: sticky; top: 0; z-index: 100; display: flex; gap: 4px; overflow-x: auto; background: var(--bg); border-bottom: 1px solid var(--border); padding: 8px 0; grid-row: auto; max-height: none; -webkit-overflow-scrolling: touch; }
+  .toc-title { display: none; }
+  .toc a { white-space: nowrap; border-left: none; border-bottom: 2px solid transparent; padding: 4px 10px; font-size: 11px; border-radius: 4px 4px 0 0; }
+  .toc a:hover, .toc a.active { border-left: none; border-bottom-color: var(--blue); }
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate { animation: fadeUp 0.4s ease-out both; animation-delay: calc(var(--i, 0) * 0.06s); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; } }
+h1 { font-family: var(--font-display); font-size: clamp(32px, 5vw, 44px); font-weight: 400; letter-spacing: -0.5px; line-height: 1.15; margin-bottom: 6px; text-wrap: balance; }
+.subtitle { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-bottom: 32px; }
+.sec-head { font-family: var(--font-display); font-size: 26px; font-weight: 400; padding: 48px 0 16px; border-bottom: 2px solid var(--border-bright); margin-bottom: 20px; scroll-margin-top: 80px; text-wrap: balance; }
+.sec-head .num { font-family: var(--font-mono); font-size: 13px; color: var(--blue); font-weight: 600; display: block; margin-bottom: 2px; }
+h3 { font-size: 15px; font-weight: 700; margin: 20px 0 10px; color: var(--text); }
+p, li { font-size: 14px; line-height: 1.7; color: var(--text); }
+p.dim, li.dim { color: var(--text-dim); }
+ul { padding-left: 20px; }
+li { margin-bottom: 4px; }
+code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface2); padding: 1px 5px; border-radius: 3px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin-bottom: 12px; }
+.card-accent { border-left: 3px solid var(--blue); }
+.card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+.pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle; }
+.pill-done { background: var(--done-dim); color: var(--done); }
+.pill-partial { background: var(--partial-dim); color: var(--partial); }
+.pill-missing { background: var(--missing-dim); color: var(--missing); }
+.table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--border); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: var(--surface2); font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border-bright); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td code { font-size: 11.5px; }
+details { border: 1px solid var(--border); border-radius: 8px; margin: 12px 0; background: var(--surface); }
+details summary { padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-dim); list-style: none; display: flex; align-items: center; gap: 6px; }
+details summary::before { content: '▸'; font-size: 11px; transition: transform 0.15s; }
+details[open] summary::before { transform: rotate(90deg); }
+details .detail-body { padding: 0 14px 14px; }
+.diagram-shell { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 16px 0; }
+.diagram-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+.diagram-header .label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
+.zoom-controls { display: flex; gap: 4px; }
+.zoom-controls button { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; width: 24px; height: 24px; font-size: 12px; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
+.zoom-controls button:hover { background: var(--surface-elevated); }
+.diagram-viewport { overflow: auto; cursor: grab; padding: 16px; min-height: 200px; display: flex; justify-content: center; }
+.diagram-viewport:active { cursor: grabbing; }
+.diagram-viewport .mermaid { transform-origin: center top; }
+figure { margin: 0; }
+figcaption { font-size: 12px; color: var(--text-dim); padding: 10px 14px; border-top: 1px solid var(--border); font-style: italic; }
+.timeline { position: relative; padding-left: 28px; margin: 16px 0; }
+.timeline::before { content: ''; position: absolute; left: 10px; top: 4px; bottom: 4px; width: 2px; background: var(--border-bright); }
+.tl-item { position: relative; margin-bottom: 20px; }
+.tl-item::before { content: ''; position: absolute; left: -22px; top: 6px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--blue); background: var(--bg); }
+.tl-item.done::before { background: var(--done); border-color: var(--done); }
+.tl-item.current::before { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-dim); }
+.tl-item .tl-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 2px; }
+.tl-item .tl-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.tl-item .tl-desc { font-size: 13px; color: var(--text-dim); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+.mermaid .nodeLabel { font-size: 14px !important; font-family: 'Bricolage Grotesque', system-ui !important; }
+.mermaid .edgeLabel { font-size: 12px !important; font-family: 'Fragment Mono', monospace !important; background: var(--surface) !important; padding: 0 3px !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" id="toc">
+  <div class="toc-title">Plan</div>
+  <a href="#s1">1. Goal & Scope</a>
+  <a href="#s2">2. Current State</a>
+  <a href="#s3">3. Proposed Design</a>
+  <a href="#s4">4. Implementation Sequence</a>
+  <a href="#s5">5. File Map</a>
+  <a href="#s6">6. Interfaces & Contracts</a>
+  <a href="#s7">7. Risks & Decisions</a>
+  <a href="#s8">8. Test Plan</a>
+  <a href="#s9">9. Acceptance Checklist</a>
+</nav>
+<div class="main">
+<h1 class="animate" style="--i:0">Scry Phase 1 MVP</h1>
+<p class="subtitle animate" style="--i:1">Implementation plan — Terminal SQL client — LuaJIT + termbox2 + luasql</p>
+<div id="s1" class="sec-head animate" style="--i:2"><span class="num">01</span>Goal & Scope</div>
+<div class="card card-accent animate" style="--i:3"><h4>🎯 What will ship</h4><p>A single statically-linked binary that connects to PostgreSQL 12+, MySQL 8+/MariaDB 10.5+, and SQLite 3. Users edit SQL, execute with Ctrl+r, view paginated results, filter/sort, export CSV/JSON, enforce read-only, and use SSH tunnels. Tests cover parser, config, read-only, exports, history, and a fuzz target.</p></div>
+<div class="grid-2 animate" style="--i:4">
+<div class="card" style="border-left: 3px solid var(--green);"><h4><span class="pill pill-done">In scope</span></h4><ul><li>Postgres adapter (libpq async)</li><li>MySQL/MariaDB adapter (MariaDB Connector/C)</li><li>SQLite adapter <span class="pill pill-done" style="margin-left:4px">done</span></li><li>Result grid with pagination, sort, filter</li><li>Sidebar table/column browser</li><li>Read-only enforcement (CTE-aware)</li><li>CSV + JSON export</li><li>History persistence (history.jsonl)</li><li>SSH tunneling</li><li>Fuzz target for SQL splitter</li><li>CI on Linux, macOS, Windows</li></ul></div>
+<div class="card" style="border-left: 3px solid var(--red);"><h4><span class="pill pill-missing">Out of scope</span></h4><ul><li>Phase 2 NoSQL (MongoDB, Redis)</li><li>Result-set tabs</li><li>Autocomplete</li><li>Native DB cancellation (PQcancel etc.)</li><li>Auto-transaction wrapping</li><li>Additional themes beyond dark/light</li><li>Plugins / extension system</li><li>Database-level pagination rewrites</li><li>Clipboard export</li></ul></div>
+</div>
+<div id="s2" class="sec-head animate" style="--i:5"><span class="num">02</span>Current State</div>
+<div class="card animate" style="--i:6"><h4>Progress: ~50% of Phase 1</h4><p>Foundations solid. Parser, execution engine, SQLite adapter, config, TUI framework, and platform abstractions complete. Major gaps: Postgres/MySQL adapters, results grid, sidebar, read-only enforcement, export, history, SSH tunneling.</p></div>
+<div class="table-wrap animate" style="--i:7"><table><thead><tr><th>Module</th><th>File</th><th>Lines</th><th>Status</th></tr></thead><tbody>
+<tr><td>C launcher</td><td><code>src/main.c</code></td><td>~55</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Entry point</td><td><code>src/app.lua</code></td><td>687</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Execution engine</td><td><code>src/core/execution.lua</code></td><td>394</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Event loop</td><td><code>src/core/event_loop.lua</code></td><td>71</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>SQL parser</td><td><code>src/sql/parse.lua</code></td><td>431</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Adapter contract</td><td><code>src/db/adapter.lua</code></td><td>26</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>SQLite adapter</td><td><code>src/db/sqlite.lua</code></td><td>275</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Terminal wrapper</td><td><code>src/tui/terminal.lua</code></td><td>339</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Editor</td><td><code>src/ui/editor.lua</code></td><td>173</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Layout</td><td><code>src/ui/layout.lua</code></td><td>56</td><td><span class="pill pill-partial">partial</span></td></tr>
+<tr><td>Syntax highlighting</td><td><code>src/utils/syntax.lua</code></td><td>201</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Config loader</td><td><code>src/config/loader.lua</code></td><td>117</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Config merge</td><td><code>src/config/merge.lua</code></td><td>54</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Platform (Unix)</td><td><code>src/platform/unix.lua</code></td><td>338</td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Platform (Windows)</td><td><code>src/platform/windows.lua</code></td><td>164</td><td><span class="pill pill-done">done</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Postgres adapter</strong></td><td><code>src/db/postgres.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>MySQL adapter</strong></td><td><code>src/db/mysql.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Result grid</strong></td><td><code>src/ui/grid.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Sidebar</strong></td><td><code>src/ui/sidebar.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Status bar</strong></td><td><code>src/ui/status.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Modal/Help</strong></td><td><code>src/ui/modal.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Read-only</strong></td><td><code>src/utils/read_only.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Export (CSV)</strong></td><td><code>src/export/csv.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Export (JSON)</strong></td><td><code>src/export/json.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>Export dispatcher</strong></td><td><code>src/utils/export.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>History store</strong></td><td><code>src/history/store.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+<tr style="background: var(--missing-dim)"><td><strong>SSH tunnel</strong></td><td><code>src/ssh/tunnel.lua</code></td><td>—</td><td><span class="pill pill-missing">missing</span></td></tr>
+</tbody></table></div>
+<div id="s3" class="sec-head animate" style="--i:9"><span class="num">03</span>Proposed Design</div>
+<h3>Architecture overview</h3>
+<figure class="diagram-shell animate" style="--i:10" role="img" aria-label="Scry architecture layers"><div class="diagram-header"><span class="label">System Architecture</span><div class="zoom-controls"><button onclick="zoomDiagram(this,1.2)">+</button><button onclick="zoomDiagram(this,0.8)">−</button><button onclick="resetZoom(this)">↺</button></div></div><div class="diagram-viewport"><div class="mermaid">
+flowchart TD
+subgraph T["Terminal (termbox2 FFI)"]
+  TUI["terminal.lua"]
+end
+subgraph C["Core Engine"]
+  EL["event_loop.lua"]
+  EX["execution.lua"]
+end
+subgraph U["UI Layer"]
+  ED["editor.lua"]
+  GR["grid.lua"]
+  SB["sidebar.lua"]
+  SV["status.lua"]
+  MD["modal.lua"]
+end
+subgraph S["SQL Layer"]
+  PA["parse.lua"]
+  RO["read_only.lua"]
+end
+subgraph D["Database Adapters"]
+  AD["adapter.lua contract"]
+  PG["postgres.lua"]
+  MY["mysql.lua"]
+  SL["sqlite.lua"]
+end
+subgraph I["Infrastructure"]
+  CF["config/"]
+  HS["history/store.lua"]
+  EX2["export/csv + json"]
+  TU["ssh/tunnel.lua"]
+end
+T-->EL
+EL-->ED
+EL-->GR
+EL-->SB
+EL-->SV
+ED-->EX
+EX-->PA
+EX-->RO
+EX-->AD
+AD-->PG
+AD-->MY
+AD-->SL
+EX-->HS
+GR-->EX2
+AD -.-> TU
+CF -.-> EX
+</div></div><figcaption>Layered architecture: terminal → core engine → UI + adapters → infrastructure. Dashed = optional/config-triggered.</figcaption></figure>
+<h3>Execution state machine</h3>
+<figure class="diagram-shell animate" style="--i:11" role="img" aria-label="Execution state machine"><div class="diagram-header"><span class="label">Execution States</span><div class="zoom-controls"><button onclick="zoomDiagram(this,1.2)">+</button><button onclick="zoomDiagram(this,0.8)">−</button><button onclick="resetZoom(this)">↺</button></div></div><div class="diagram-viewport"><div class="mermaid">
+stateDiagram-v2
+[*] --> IDLE
+IDLE --> SPLITTING: Ctrl+r
+SPLITTING --> CLASSIFYING
+CLASSIFYING --> SEND_QUERY
+CLASSIFYING --> BLOCKED: read-only
+SEND_QUERY --> QUERYING
+QUERYING --> GETTING_RESULT: RESULT_READY
+QUERYING --> CANCELING: Ctrl+C
+GETTING_RESULT --> FETCHING
+FETCHING --> CLOSING_RESULT: nil/max/Ctrl+C
+CLOSING_RESULT --> STATEMENT_COMPLETE
+STATEMENT_COMPLETE --> CLASSIFYING: more
+STATEMENT_COMPLETE --> COMPLETE: done
+CANCELING --> RECONNECT_CONFIRM
+</div></div><figcaption>Adapted from scry-spec §4b. States that yield to the event loop: QUERYING, FETCHING, DRAINING.</figcaption></figure>
+<h3>Adapter capabilities</h3>
+<div class="table-wrap animate" style="--i:12"><table><thead><tr><th>Capability</th><th>PostgreSQL</th><th>MySQL/MariaDB</th><th>SQLite</th></tr></thead><tbody>
+<tr><td><code>query_async</code></td><td>✓ libpq</td><td>✓ MariaDB</td><td>✗ prepare/step</td></tr>
+<tr><td><code>result_streaming</code></td><td>✓ incremental</td><td>✗ store_result</td><td>✓ step</td></tr>
+<tr><td><code>result_fetch_async</code></td><td>✓ PQgetResult</td><td>✗ blocks</td><td>✗ CPU</td></tr>
+<tr><td><code>early_close_drain</code></td><td>✓ multi-result</td><td>✗ safe</td><td>✗ safe</td></tr>
+</tbody></table></div>
+<div id="s4" class="sec-head animate" style="--i:13"><span class="num">04</span>Implementation Sequence</div>
+<div class="timeline animate" style="--i:15">
+<div class="tl-item done"><div class="tl-label">Phase 0</div><div class="tl-title">Foundations</div><div class="tl-desc">Parser, execution engine, SQLite adapter, config, TUI wrapper. Complete. 3,460 LOC.</div></div>
+<div class="tl-item current"><div class="tl-label">Phase 1A — Critical path</div><div class="tl-title">PostgreSQL + MySQL adapters</div><div class="tl-desc">~400 lines each. libpq async via LuaSQL PR #201. MariaDB Connector/C with MYSQL_OPT_NONBLOCK. Full adapter contract. Driver capability tests.</div></div>
+<div class="tl-item"><div class="tl-label">Phase 1B</div><div class="tl-title">Read-only enforcement</div><div class="tl-desc">~100 lines. Wraps parse.classify_statement. CTE-aware. Default-deny policy.</div></div>
+<div class="tl-item"><div class="tl-label">Phase 1C</div><div class="tl-title">UI components</div><div class="tl-desc">Grid (~500 lines), sidebar (~350), status bar (~120), modal (~150). Layout integration.</div></div>
+<div class="tl-item"><div class="tl-label">Phase 1D</div><div class="tl-title">Export & History</div><div class="tl-desc">CSV + JSON export (~100 lines each). history.jsonl store (~150 lines). Export re-executes single SELECT.</div></div>
+<div class="tl-item"><div class="tl-label">Phase 1E</div><div class="tl-title">SSH tunneling</div><div class="tl-desc">~200 lines. ssh -N -L, PID tracking, OS-assigned ports. Wires into adapter connect/close.</div></div>
+<div class="tl-item"><div class="tl-label">Phase 1F</div><div class="tl-title">Tests & Fuzzing</div><div class="tl-desc">Read-only, export, history, integration, driver capability tests. Fuzz target: 100k iterations, 2s timeout, 64KB max.</div></div>
+<div class="tl-item"><div class="tl-label">Phase 1G</div><div class="tl-title">Polish & Release</div><div class="tl-desc">README, examples, CI, docs. Measure binary size, startup P50/P95, idle memory.</div></div>
+</div>
+<div id="s5" class="sec-head animate" style="--i:17"><span class="num">05</span>File Map</div>
+<details class="animate" style="--i:18"><summary>Files to CREATE (14 modules + 8 test files)</summary><div class="detail-body"><div class="table-wrap"><table><thead><tr><th>File</th><th>Phase</th><th>~Lines</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>src/db/postgres.lua</code></td><td>1A</td><td>400</td><td>libpq async adapter. connect, send_query, poll, get_result, next_row, close_result, cancel, list_tables, get_columns, capabilities.</td></tr>
+<tr><td><code>src/db/mysql.lua</code></td><td>1A</td><td>400</td><td>MariaDB Connector/C adapter. mysql_real_query_start/_cont. mysql_store_result (blocks). SHOW TABLES / SHOW COLUMNS.</td></tr>
+<tr><td><code>src/utils/read_only.lua</code></td><td>1B</td><td>100</td><td>Wraps classify_statement. Checks blocked_keyword. CTE-aware anywhere-in-statement scan.</td></tr>
+<tr><td><code>src/ui/grid.lua</code></td><td>1C</td><td>500</td><td>Column sizing, pagination, sort, filter, NULL/binary rendering, horizontal scroll, cell modal.</td></tr>
+<tr><td><code>src/ui/sidebar.lua</code></td><td>1C</td><td>350</td><td>Table browser via adapter:list_tables/get_columns. Expandable tree. Connection status.</td></tr>
+<tr><td><code>src/ui/status.lua</code></td><td>1C</td><td>120</td><td>Connection name, [READ ONLY], mode, page, rows, elapsed.</td></tr>
+<tr><td><code>src/ui/modal.lua</code></td><td>1C</td><td>150</td><td>Help, full cell value, error, reconnect confirmation overlays.</td></tr>
+<tr><td><code>src/export/csv.lua</code></td><td>1D</td><td>100</td><td>RFC 4180. Double-quote when comma/newline/quote. NULL→empty.</td></tr>
+<tr><td><code>src/export/json.lua</code></td><td>1D</td><td>100</td><td>Type-aware JSON. NULL→null, binary→encoded. Never silently stringify.</td></tr>
+<tr><td><code>src/utils/export.lua</code></td><td>1D</td><td>80</td><td>Dispatcher. Enforces single read-only SELECT. Fresh result stream.</td></tr>
+<tr><td><code>src/history/store.lua</code></td><td>1D</td><td>150</td><td>Append-only history.jsonl. Prune by count and size. Plain data, never code.</td></tr>
+<tr><td><code>src/ssh/tunnel.lua</code></td><td>1E</td><td>200</td><td>ssh -N -L, PID tracking, port 0 for OS-assigned, ExitOnForwardFailure.</td></tr>
+<tr><td><code>tests/sql/fuzz_split_statements.lua</code></td><td>1F</td><td>150</td><td>libFuzzer. Seed corpus. 2s timeout, 64KB, 256MB RSS, 100k iterations.</td></tr>
+<tr><td><code>tests/readonly/readonly_test.lua</code></td><td>1F</td><td>150</td><td>CTE cases, all keyword forms, keywords in strings/comments.</td></tr>
+<tr><td><code>tests/export/*_test.lua</code></td><td>1F</td><td>100</td><td>CSV quoting, JSON types, export guards.</td></tr>
+<tr><td><code>tests/history/history_test.lua</code></td><td>1F</td><td>100</td><td>Load, append, prune, JSON validity.</td></tr>
+<tr><td><code>tests/integration/postgres_test.lua</code></td><td>1F</td><td>150</td><td>Against CI service container. Capability tests per spec.</td></tr>
+<tr><td><code>tests/integration/mysql_test.lua</code></td><td>1F</td><td>150</td><td>Against CI service container. MATERIALIZING observable.</td></tr>
+<tr><td><code>tests/integration/driver_capability_test.lua</code></td><td>1F</td><td>200</td><td>Per-driver async behavior verification.</td></tr>
+</tbody></table></div></div></details>
+<details><summary>Files to EDIT (5 existing modules)</summary><div class="detail-body"><div class="table-wrap"><table><thead><tr><th>File</th><th>Change</th></tr></thead><tbody>
+<tr><td><code>src/app.lua</code></td><td>Wire sidebar, grid, status, modal. Add :connect, :history, :help commands. Integrate history store. Add export + read-only CLI flag.</td></tr>
+<tr><td><code>src/ui/layout.lua</code></td><td>Complete 3-pane layout. Handle resize. 80×24 minimum.</td></tr>
+<tr><td><code>src/core/event_loop.lua</code></td><td>Add SSH polling tick. Wire render/key handlers for new UI.</td></tr>
+<tr><td><code>src/core/execution.lua</code></td><td>Wire read_only check. Export support (fresh stream). Expose statement_results.</td></tr>
+<tr><td><code>Makefile</code></td><td>Add libpq + libmariadb link flags. New test + fuzz targets.</td></tr>
+</tbody></table></div></div></details>
+<div id="s6" class="sec-head animate" style="--i:19"><span class="num">06</span>Interfaces & Contracts</div>
+<h3>Adapter contract</h3>
+<div class="table-wrap animate" style="--i:21"><table><thead><tr><th>Method</th><th>Returns</th><th>Blocking?</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>connect(config)</code></td><td>ok, err</td><td>Yes (10s)</td><td>Opens connection + SSH tunnel</td></tr>
+<tr><td><code>send_query(sql)</code></td><td>ok, err</td><td><strong>No</strong></td><td>Must return immediately</td></tr>
+<tr><td><code>poll()</code></td><td>boolean</td><td><strong>No</strong></td><td>One continuation step per call</td></tr>
+<tr><td><code>get_result()</code></td><td>ok, err</td><td>Maybe</td><td>MySQL blocks</td></tr>
+<tr><td><code>next_row()</code></td><td>table|nil</td><td>Maybe</td><td>nil = end. Only row primitive.</td></tr>
+<tr><td><code>close_result()</code></td><td>—</td><td><strong>No</strong></td><td>Postgres drains via poll()</td></tr>
+<tr><td><code>cancel()</code></td><td>—</td><td>No</td><td>QUERYING: close+reconnect. FETCHING: close_result</td></tr>
+<tr><td><code>list_tables()</code></td><td>string[]</td><td>Yes</td><td>Catalog query</td></tr>
+<tr><td><code>get_columns(t)</code></td><td>col[]</td><td>Yes</td><td>Catalog query</td></tr>
+<tr><td><code>capabilities()</code></td><td>table</td><td>No</td><td>Driver async properties</td></tr>
+</tbody></table></div>
+<h3>CLI</h3>
+<div class="card animate" style="--i:22"><p><code>scry [--connection NAME] [--read-only] [--debug] [--version] [--help]</code></p></div>
+<div id="s7" class="sec-head animate" style="--i:26"><span class="num">07</span>Risks & Decisions</div>
+<div class="table-wrap animate" style="--i:27"><table><thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead><tbody>
+<tr><td>luasql PR #201 bugs</td><td>Medium</td><td>High</td><td>Driver capability tests. Pin exact SHA.</td></tr>
+<tr><td>MySQL blocks event loop</td><td>Certain</td><td>Medium</td><td>Documented. UI shows "Transferring…". Phase 2 fix.</td></tr>
+<tr><td>SQLite Ctrl+C latency</td><td>Low</td><td>Low</td><td>Document in README. Phase 2: sqlite3_interrupt.</td></tr>
+<tr><td>Nested block comments</td><td>Low</td><td>Low</td><td>Documented limitation. Fuzz target.</td></tr>
+<tr><td>MariaDB Connector/C missing</td><td>Medium</td><td>High</td><td>Document prerequisite. CI installs.</td></tr>
+<tr><td>Tests fail (no TTY)</td><td>High</td><td>Medium</td><td>Mock terminal for unit tests.</td></tr>
+<tr><td>Close-and-reconnect slow</td><td>Medium</td><td>Low</td><td>Phase 1 documented. Phase 2 native option.</td></tr>
+</tbody></table></div>
+<div class="grid-2 animate" style="--i:28">
+<div class="card" style="border-left: 3px solid var(--amber);"><h4>Halt-on-first failure</h4><p>Stops at first failed Statement. Chosen over run-all because mid-buffer failure in BEGIN/COMMIT leaves ambiguous transaction state.</p></div>
+<div class="card" style="border-left: 3px solid var(--amber);"><h4>Close-and-reconnect cancellation</h4><p>Ctrl+c closes connection, prompts reconnect. Avoids FFI coupling to version-dependent driver handles.</p></div>
+<div class="card" style="border-left: 3px solid var(--amber);"><h4>next_row() only</h4><p>No materialize-everything method. Grid caps at max_result_rows, export streams to file. Both consume off next_row().</p></div>
+<div class="card" style="border-left: 3px solid var(--amber);"><h4>Executable Lua config</h4><p>No YAML/TOML. os.getenv() and functions directly. Connections replaced wholesale by name to prevent Frankenstein configs.</p></div>
+</div>
+<div id="s8" class="sec-head animate" style="--i:29"><span class="num">08</span>Test Plan</div>
+<details class="animate" style="--i:30" open><summary>Unit tests</summary><div class="detail-body"><div class="table-wrap"><table><thead><tr><th>Test</th><th>File</th><th>Status</th></tr></thead><tbody>
+<tr><td>SQL parser</td><td><code>tests/sql/parse_test.lua</code></td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Config merge</td><td><code>tests/config/merge_test.lua</code></td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Editor</td><td><code>tests/editor_test.lua</code></td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Syntax</td><td><code>tests/utils_syntax_test.lua</code></td><td><span class="pill pill-done">done</span></td></tr>
+<tr><td>Read-only</td><td><code>tests/readonly/readonly_test.lua</code></td><td><span class="pill pill-missing">todo</span></td></tr>
+<tr><td>CSV export</td><td><code>tests/export/csv_test.lua</code></td><td><span class="pill pill-missing">todo</span></td></tr>
+<tr><td>JSON export</td><td><code>tests/export/json_test.lua</code></td><td><span class="pill pill-missing">todo</span></td></tr>
+<tr><td>History</td><td><code>tests/history/history_test.lua</code></td><td><span class="pill pill-missing">todo</span></td></tr>
+</tbody></table></div></div></details>
+<details><summary>Fuzz target parameters</summary><div class="detail-body"><div class="table-wrap"><table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>
+<tr><td>Per-input timeout</td><td>2 seconds</td></tr>
+<tr><td>Max input</td><td>65,536 bytes</td></tr>
+<tr><td>RSS cap</td><td>256 MB</td></tr>
+<tr><td>Wall time</td><td>300 seconds</td></tr>
+<tr><td>Min iterations</td><td>100,000</td></tr>
+<tr><td>Exit codes</td><td>0=pass, 77=timeout/crash</td></tr>
+</tbody></table></div></div></details>
+<div id="s9" class="sec-head animate" style="--i:34"><span class="num">09</span>Acceptance Checklist</div>
+<div class="grid-2 animate" style="--i:36">
+<div class="card" style="border-left: 3px solid var(--green);"><h4>Build & Run</h4><ul><li><code>make all</code> works on Linux, macOS, Windows</li><li><code>scry --version</code> and <code>--help</code></li><li>Binary ≤ 3 MB</li><li>Cold startup P50 &lt; 50ms</li><li>Idle memory &lt; 50 MB</li></ul></div>
+<div class="card" style="border-left: 3px solid var(--green);"><h4>Connectivity</h4><ul><li>PostgreSQL 12+</li><li>MySQL 8+ / MariaDB 10.5+</li><li>SQLite 3</li><li>Health check after connect</li><li>10s timeout</li></ul></div>
+<div class="card" style="border-left: 3px solid var(--green);"><h4>Execution</h4><ul><li>Ctrl+r executes buffer/selection</li><li>Multi-statement halt-on-first</li><li>Paginated grid results</li><li>Sort, filter, pagination</li><li>Ctrl+c cancels</li></ul></div>
+<div class="card" style="border-left: 3px solid var(--green);"><h4>Read-only</h4><ul><li>--read-only flag</li><li>SELECT/EXPLAIN/SHOW allowed</li><li>Write keywords blocked</li><li>CTE-aware classification</li></ul></div>
+<div class="card" style="border-left: 3px solid var(--green);"><h4>Export & History</h4><ul><li>Ctrl+e CSV, Ctrl+Shift+e JSON</li><li>Export guarded to single SELECT</li><li>History persisted</li><li>Ctrl+p/Ctrl+n navigate</li></ul></div>
+<div class="card" style="border-left: 3px solid var(--green);"><h4>Tests</h4><ul><li>All unit tests pass</li><li>Integration tests (PG, MySQL, SQLite)</li><li>Fuzz: 100k iterations, no crash</li><li>Driver capability tests</li></ul></div>
+</div>
+<div class="card animate" style="--i:37; margin-top: 20px; border-left: 3px solid var(--blue);"><h4>Final gate</h4><p><code>make all && make test && ./scry --version && ./scry --help</code> — all green.</p></div>
+<p class="dim animate" style="--i:38; margin-top: 40px; font-size: 12px; font-family: var(--font-mono);">Source: scry-spec.md (725 lines) + codebase (18 files, 3,460 LOC)</p>
+</div></div>
+<script>
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { primaryColor: isDark?'#1e293b':'#f0f9ff', primaryBorderColor: isDark?'#38bdf8':'#0369a1', primaryTextColor: isDark?'#e2e8f0':'#1e293b', lineColor: isDark?'#64748b':'#94a3b8', secondaryColor: isDark?'#162032':'#f0fdfa', tertiaryColor: isDark?'#0f172a':'#f8fafc', fontFamily: 'Bricolage Grotesque, system-ui', fontSize: '14px' }, flowchart: { curve: 'basis', padding: 16 }, stateDiagram: { padding: 16 }, look: 'classic' });
+function zoomDiagram(b,f){const v=b.closest('.diagram-shell').querySelector('.diagram-viewport'),c=v.querySelector('.mermaid');if(!c._z)c._z=1;c._z=Math.max(.3,Math.min(3,c._z*f));c.style.transform=`scale(${c._z})`}
+function resetZoom(b){const v=b.closest('.diagram-shell').querySelector('.diagram-viewport'),c=v.querySelector('.mermaid');c._z=1;c.style.transform='scale(1)'}
+document.querySelectorAll('.diagram-viewport').forEach(v=>{v.addEventListener('wheel',e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();const c=v.querySelector('.mermaid');if(!c._z)c._z=1;c._z=Math.max(.3,Math.min(3,c._z*(e.deltaY<0?1.1:.9)));c.style.transform=`scale(${c._z})`},{passive:false})});
+const tL=document.querySelectorAll('.toc a'),sE=[];tL.forEach(a=>{const id=a.getAttribute('href').slice(1),el=document.getElementById(id);if(el)sE.push({el,link:a})});
+function uT(){let c=sE[0];for(const s of sE)if(s.el.getBoundingClientRect().top<=100)c=s;tL.forEach(a=>a.classList.remove('active'));if(c)c.link.classList.add('active')}
+window.addEventListener('scroll',uT,{passive:true});uT();
+</script>
+</body>
+</html>

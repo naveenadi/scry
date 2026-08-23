@@ -37,6 +37,12 @@ h.test("split: semicolon in backtick identifier", function()
     h.assert_eq(#stmts, 1, "count")
 end)
 
+h.test("split: doubled backtick in identifier", function()
+    local stmts = parse.split_statements("SELECT `a``;b`; SELECT 2")
+    h.assert_eq(#stmts, 2, "count")
+    h.assert_eq(stmts[1].text, "SELECT `a``;b`", "first")
+end)
+
 h.test("split: semicolon in line comment", function()
     local stmts = parse.split_statements("SELECT 1 -- comment;\n; SELECT 2")
     h.assert_eq(#stmts, 2, "count")
