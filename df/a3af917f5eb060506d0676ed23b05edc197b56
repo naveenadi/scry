@@ -1,0 +1,85 @@
+tests/sql/parse_test.lua
+  s_7b9b2c405729c0::t_b68cf3f0ab7283 40-45
+docs/scry-comprehensive.html
+  s_098ff456e11a2c::t_078659cbe75332 1-207
+AGENTS.md
+  s_79fb3fd2ee71a6::t_c9f6c8a9704cef 14-24
+Makefile
+  s_7b9b2c405729c0::t_a48323eb5454fe 1-18,20-37,39,41,43-49,51,53-55,57-63,65-66,68-69,71-73,75-78,80-115,117-118,122-125,129
+  s_7b9b2c405729c0::t_eb143c47badc89 42,79
+  s_7b9b2c405729c0::t_b18855d3e13cb8 116,119
+build/SOURCES.txt
+  s_7b9b2c405729c0::t_d2770372f998a9 1,6,11,15,18-19,22-23,26,28
+  s_35a4ff11c18c74::t_f2dc1d6c020da9 2-5,7-10,12-14,16-17,20-21,24-25,27
+docs/research/spec-claims-verification.md
+  s_b85bcdda606f39::t_7483e6fc933532 198,208
+  s_b85bcdda606f39::t_e2a5efe3fb7792 176-192
+  s_b85bcdda606f39::t_5c1395514a64a0 29,35,37,41-43
+  s_ce1ddd6c6233e2::t_74e48b866aa370 1-28,30-34,36,38-40,44-175,193-197,199-207
+.gitignore
+  s_7b9b2c405729c0::t_f1bed989b59748 54-56
+docs/prototype/config-merge-prototype.html
+  s_7b9b2c405729c0::t_4306699f9d212f 1-214
+src/sql/parse.lua
+  s_7b9b2c405729c0::t_ca4968a70da6a9 155-163,333,337-342
+scry-spec.md
+  s_b85bcdda606f39::t_a69daa3dab0555 44,51,127,249
+docs/implementation-plan.html
+  s_098ff456e11a2c::t_659c63625c10ff 1-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "dfa3af917f5eb060506d0676ed23b05edc197b56",
+  "prompts": {},
+  "sessions": {
+    "s_098ff456e11a2c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03034-87a2-783c-b591-cb47cf838cf3",
+        "model": "mimo-v2.5"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_35a4ff11c18c74": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a02110-d31f-70ab-acb9-1ebc2c4a744c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_79fb3fd2ee71a6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03001-6e97-7289-bb28-8df630eb317f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_7b9b2c405729c0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03030-4b0c-7b84-9b28-6df5cc1a9c24",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_b85bcdda606f39": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03061-1f14-70b9-87d5-3b135f20d3c3",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_ce1ddd6c6233e2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03063-eb41-79f1-9b64-f909c8033ddc",
+        "model": "mimo-v2.5"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
