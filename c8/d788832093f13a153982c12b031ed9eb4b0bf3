@@ -1,0 +1,66 @@
+docs/research/luasql-compilation.md
+  s_aff3744eb7a9b2::t_5e807e9a8728b1 1-292
+src/main.c
+  s_b85bcdda606f39::t_b613b0df67a147 33-61
+tests/integration/sqlite_test.lua
+  s_b85bcdda606f39::t_bed7ad6bad353b 133,137
+docs/research/termbox2-ffi-bindings.md
+  s_474ef04f192d9e::t_d020ce0390da96 1-547
+Makefile
+  s_b85bcdda606f39::t_ffe34156b2c88c 122,124-130
+  s_b85bcdda606f39::t_a196fc45d6ec09 12
+src/db/sqlite.lua
+  s_b85bcdda606f39::t_1b9c816ade6968 59-64,66,68
+docs/research/platform-abstraction.md
+  s_8c1850c7ec1597::t_d0d770efbac143 1-849
+docs/research/luajit-embedding.md
+  s_f3fd1dcbbf37f6::t_f2caa9b2ff1cbf 1-535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "c8d788832093f13a153982c12b031ed9eb4b0bf3",
+  "prompts": {},
+  "sessions": {
+    "s_474ef04f192d9e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03079-e0c5-733e-8603-f64a9f7de136",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_8c1850c7ec1597": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03079-e136-7c5f-816c-a9d2b7372a93",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_aff3744eb7a9b2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03079-e101-74e9-ac07-f0929f1e6fb3",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_b85bcdda606f39": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03061-1f14-70b9-87d5-3b135f20d3c3",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_f3fd1dcbbf37f6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03079-e11d-76e4-9936-56f1b31e1c10",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
