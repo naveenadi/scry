@@ -14,4 +14,10 @@ for _, token in ipairs(syntax.tokenize_line("select * from users")) do
     spaced[#spaced + 1] = token.text
 end
 assert(table.concat(spaced) == "select * from users", table.concat(spaced))
-print("syntax whitespace test passed")
+
+local quoted = {}
+for _, token in ipairs(syntax.tokenize_line("SELECT `a``;b` FROM t")) do
+    quoted[#quoted + 1] = token.text
+end
+assert(table.concat(quoted) == "SELECT `a``;b` FROM t", table.concat(quoted))
+print("syntax whitespace and shared scanner tests passed")

@@ -147,9 +147,15 @@ h.test("execution: multi-statement halt-on-first-failure", function()
     h.assert_eq(meta.failed_statement, 2, "failed_statement")
 end)
 
+h.test("execution: rejects incomplete adapters", function()
+    local ok, err = pcall(function() execution.new({}, config) end)
+    h.assert_true(not ok, "constructor rejects incomplete adapter")
+    h.assert_true(err:find("missing method") ~= nil, "error identifies missing method")
+end)
+
 h.test("execution: read-only blocks write statements", function()
-    local adapter = mock_adapter({ read_only = true })
-    local exec = execution.new(adapter, config)
+    local adapter = mock_adapter()
+    local exec = execution.new(adapter, config, true)
     exec:execute("INSERT INTO t VALUES (1)")
 
     -- The state machine runs synchronously: SPLITTING -> CLASSIFYING -> BLOCKED
@@ -158,8 +164,8 @@ h.test("execution: read-only blocks write statements", function()
 end)
 
 h.test("execution: read-only allows SELECT", function()
-    local adapter = mock_adapter({ read_only = true })
-    local exec = execution.new(adapter, config)
+    local adapter = mock_adapter()
+    local exec = execution.new(adapter, config, true)
     exec:execute("SELECT 1")
 
     h.assert_eq(exec.state, execution.QUERYING, "state")

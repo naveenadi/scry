@@ -14,14 +14,12 @@ function M.new()
         _cursor = nil,
         _columns = nil,
         _error = nil,
-        _read_only = false,
         _database = nil,
     }
 
     -- Connect to a SQLite database.
     function self:connect(config)
         self._database = config.database or ":memory:"
-        self._read_only = config.read_only or false
         self._state = adapter.CONNECTING
 
         local luasql = require("luasql.sqlite3")

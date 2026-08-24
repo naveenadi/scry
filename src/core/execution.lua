@@ -3,7 +3,7 @@
 -- Owns Execution state; adapters own Connection/driver state.
 
 local parse = require("src.sql.parse")
-local errors = require("src.core.errors")
+local adapter_contract = require("src.db.adapter")
 
 local M = {}
 
@@ -31,10 +31,15 @@ local DEFAULT_ROW_BUDGET = 1000
 -- Create a new execution engine.
 -- adapter: the database adapter (implements the adapter contract)
 -- config: the merged configuration
-function M.new(adapter, config)
+-- read_only: execution policy, independent of the adapter implementation
+function M.new(adapter, config, read_only)
+    local valid, validation_error = adapter_contract.validate(adapter)
+    if not valid then error(validation_error, 2) end
+
     local self = {
         adapter = adapter,
         config = config,
+        read_only = read_only == true,
         state = M.IDLE,
 
         -- Execution state
@@ -124,8 +129,7 @@ function M.new(adapter, config)
                 local classification = parse.classify_statement(stmt.text)
 
                 -- Check read-only mode
-                local read_only = self.adapter and self.adapter._read_only
-                if read_only and classification.blocked_keyword then
+                if self.read_only and classification.blocked_keyword then
                     self.state = M.BLOCKED
                     self.result_error = string.format(
                         "READ ONLY: statement %d blocked — %s keyword found: %s",
@@ -383,9 +387,9 @@ function M.new(adapter, config)
                self.state == M.MATERIALIZING or self.state == M.DRAINING
     end
 
-    -- Check if the adapter is in read-only mode.
+    -- Check if this execution enforces read-only mode.
     function self:is_read_only()
-        return self.adapter and self.adapter._read_only or false
+        return self.read_only
     end
 
     return self

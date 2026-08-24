@@ -1,5 +1,7 @@
 -- src/utils/syntax.lua — SQL syntax highlighting
--- Reuses the tokenizer from sql.parse for keyword/string/comment detection.
+-- Reuses scan_quoted/scan_line_comment/scan_block_comment from sql.parse.
+
+local parse = require("src.sql.parse")
 
 local M = {}
 
@@ -81,75 +83,31 @@ function M.tokenize_line(line)
 
         if ch == "'" then
             flush()
-            -- Single-quoted string
             local start = i
-            i = i + 1
-            while i <= len do
-                if line:sub(i, i) == "'" then
-                    if i + 1 <= len and line:sub(i + 1, i + 1) == "'" then
-                        i = i + 2
-                    else
-                        i = i + 1
-                        break
-                    end
-                elseif line:sub(i, i) == '\\' then
-                    i = i + 2
-                else
-                    i = i + 1
-                end
-            end
+            i = parse.scan_quoted(line, i, "'")
             table.insert(tokens, { type = TOKEN_STRING, text = line:sub(start, i - 1) })
 
         elseif ch == '"' then
             flush()
-            -- Double-quoted identifier
             local start = i
-            i = i + 1
-            while i <= len do
-                if line:sub(i, i) == '"' then
-                    if i + 1 <= len and line:sub(i + 1, i + 1) == '"' then
-                        i = i + 2
-                    else
-                        i = i + 1
-                        break
-                    end
-                else
-                    i = i + 1
-                end
-            end
+            i = parse.scan_quoted(line, i, '"')
             table.insert(tokens, { type = TOKEN_STRING, text = line:sub(start, i - 1) })
 
         elseif ch == '`' then
             flush()
-            -- Backtick identifier
             local start = i
-            i = i + 1
-            while i <= len do
-                if line:sub(i, i) == '`' then
-                    i = i + 1
-                    break
-                else
-                    i = i + 1
-                end
-            end
+            i = parse.scan_quoted(line, i, '`')
             table.insert(tokens, { type = TOKEN_STRING, text = line:sub(start, i - 1) })
 
         elseif ch == '-' and i + 1 <= len and line:sub(i + 1, i + 1) == '-' then
             flush()
-            -- Line comment
             table.insert(tokens, { type = TOKEN_COMMENT, text = line:sub(i) })
             i = len + 1
 
         elseif ch == '/' and i + 1 <= len and line:sub(i + 1, i + 1) == '*' then
             flush()
-            -- Block comment (may span lines — highlight to end of line)
             local start = i
-            local close = line:find("*/", i + 2, true)
-            if close then
-                i = close + 2
-            else
-                i = len + 1
-            end
+            i = parse.scan_block_comment(line, i)
             table.insert(tokens, { type = TOKEN_COMMENT, text = line:sub(start, i - 1) })
 
         elseif ch:match("[%a_]") then

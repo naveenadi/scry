@@ -23,4 +23,23 @@ function M.is_null(val)
     return type(val) == "table" and val.is_null == true
 end
 
+-- Validate the adapter seam once, before an Execution can call it.
+function M.validate(value)
+    if type(value) ~= "table" then
+        return false, "adapter must be a table"
+    end
+
+    local required = {
+        "connect", "send_query", "poll", "get_result", "state", "error",
+        "columns", "next_row", "close_result", "cancel", "list_tables",
+        "get_columns", "ping", "close", "capabilities",
+    }
+    for _, name in ipairs(required) do
+        if type(value[name]) ~= "function" then
+            return false, "adapter is missing method: " .. name
+        end
+    end
+    return true
+end
+
 return M

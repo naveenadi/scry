@@ -52,6 +52,57 @@ function M.new_tokenizer()
     }
 end
 
+-- Scan past a quoted string or identifier starting at text[i] (the opening quote).
+-- Returns the index after the closing quote.
+-- Handles: doubled escape ('' "" ``), backslash escape (\.), and dollar-quote tags.
+-- quote_char: "'", '"', '`', or '$'. For '$', text[i] must be the opening '$'.
+function M.scan_quoted(text, i, quote_char)
+    local len = #text
+    if quote_char == '$' then
+        -- Dollar-quote: find closing $tag$
+        local tag_end = text:find("$", i + 1, true)
+        if not tag_end then return len + 1 end
+        local tag = text:sub(i, tag_end)
+        if not tag:match("^%$[%w_]*%$$") then return i + 1 end
+        local close = text:find(tag, tag_end + 1, true)
+        if close then return close + #tag end
+        return len + 1
+    end
+    i = i + 1 -- skip opening quote
+    while i <= len do
+        local ch = text:sub(i, i)
+        if ch == quote_char then
+            -- Check for doubled escape
+            if i + 1 <= len and text:sub(i + 1, i + 1) == quote_char then
+                i = i + 2
+            else
+                return i + 1 -- after closing quote
+            end
+        elseif ch == '\\' and quote_char ~= '`' then
+            i = i + 2 -- skip backslash escape (not for backticks)
+        else
+            i = i + 1
+        end
+    end
+    return len + 1
+end
+
+-- Scan past a line comment starting at text[i] (first '-').
+-- Returns the index after the newline (or end of text).
+function M.scan_line_comment(text, i)
+    local nl = text:find("\n", i + 2, true)
+    if nl then return nl + 1 end
+    return #text + 1
+end
+
+-- Scan past a block comment starting at text[i] (first '/').
+-- Returns the index after '*/' (or end of text).
+function M.scan_block_comment(text, i)
+    local close = text:find("*/", i + 2, true)
+    if close then return close + 2 end
+    return #text + 1
+end
+
 -- Split a buffer text into statements.
 -- Returns an array of { text = "...", start_pos = N, end_pos = N }.
 -- This is the sole authority on statement boundaries.
@@ -120,48 +171,17 @@ function M.split_statements(buffer_text)
             end
 
         elseif tok.state == M.STATE_SINGLE_QUOTE then
-            if ch == "'" then
-                -- Check for escaped single-quote (doubled '')
-                if i + 1 <= len and buffer_text:sub(i + 1, i + 1) == "'" then
-                    i = i + 2  -- skip both quotes
-                else
-                    tok.state = M.STATE_NORMAL
-                    i = i + 1
-                end
-            elseif ch == '\\' then
-                -- Backslash escape (Postgres-style)
-                i = i + 2  -- skip escaped char
-            else
-                i = i + 1
-            end
+            -- i already points after the opening quote.
+            i = M.scan_quoted(buffer_text, i - 1, "'")
+            tok.state = M.STATE_NORMAL
 
         elseif tok.state == M.STATE_DOUBLE_QUOTE then
-            if ch == '"' then
-                -- Check for escaped double-quote (doubled "")
-                if i + 1 <= len and buffer_text:sub(i + 1, i + 1) == '"' then
-                    i = i + 2
-                else
-                    tok.state = M.STATE_NORMAL
-                    i = i + 1
-                end
-            elseif ch == '\\' then
-                i = i + 2
-            else
-                i = i + 1
-            end
+            i = M.scan_quoted(buffer_text, i - 1, '"')
+            tok.state = M.STATE_NORMAL
 
         elseif tok.state == M.STATE_BACKTICK then
-            if ch == '`' then
-                -- MySQL escapes a backtick in an identifier by doubling it.
-                if i + 1 <= len and buffer_text:sub(i + 1, i + 1) == '`' then
-                    i = i + 2
-                else
-                    tok.state = M.STATE_NORMAL
-                    i = i + 1
-                end
-            else
-                i = i + 1
-            end
+            i = M.scan_quoted(buffer_text, i - 1, '`')
+            tok.state = M.STATE_NORMAL
 
         elseif tok.state == M.STATE_DOLLAR_QUOTE then
             if ch == '$' then
@@ -296,102 +316,30 @@ function M._tokenize_for_classification(sql_text)
         local ch = sql_text:sub(i, i)
 
         if ch == "'" then
-            -- Single-quoted string: skip to closing quote
-            i = i + 1
-            while i <= len do
-                if sql_text:sub(i, i) == "'" then
-                    if i + 1 <= len and sql_text:sub(i + 1, i + 1) == "'" then
-                        i = i + 2  -- escaped quote
-                    else
-                        i = i + 1
-                        break
-                    end
-                elseif sql_text:sub(i, i) == '\\' then
-                    i = i + 2
-                else
-                    i = i + 1
-                end
-            end
+            i = M.scan_quoted(sql_text, i, "'")
 
         elseif ch == '"' then
-            -- Double-quoted identifier: skip to closing quote
-            i = i + 1
-            while i <= len do
-                if sql_text:sub(i, i) == '"' then
-                    if i + 1 <= len and sql_text:sub(i + 1, i + 1) == '"' then
-                        i = i + 2
-                    else
-                        i = i + 1
-                        break
-                    end
-                else
-                    i = i + 1
-                end
-            end
+            i = M.scan_quoted(sql_text, i, '"')
 
         elseif ch == '`' then
-            -- Backtick-quoted identifier: doubled backticks are escaped.
-            i = i + 1
-            while i <= len do
-                if sql_text:sub(i, i) == '`' then
-                    if i + 1 <= len and sql_text:sub(i + 1, i + 1) == '`' then
-                        i = i + 2
-                    else
-                        i = i + 1
-                        break
-                    end
-                else
-                    i = i + 1
-                end
-            end
+            i = M.scan_quoted(sql_text, i, '`')
 
         elseif ch == '-' and i + 1 <= len and sql_text:sub(i + 1, i + 1) == '-' then
-            -- Line comment: skip to newline
-            i = i + 2
-            while i <= len and sql_text:sub(i, i) ~= '\n' do
-                i = i + 1
-            end
+            i = M.scan_line_comment(sql_text, i)
 
         elseif ch == '/' and i + 1 <= len and sql_text:sub(i + 1, i + 1) == '*' then
-            -- Block comment: skip to */
-            i = i + 2
-            while i <= len do
-                if sql_text:sub(i, i) == '*' and i + 1 <= len and sql_text:sub(i + 1, i + 1) == '/' then
-                    i = i + 2
-                    break
-                else
-                    i = i + 1
-                end
-            end
+            i = M.scan_block_comment(sql_text, i)
 
         elseif ch == '$' then
-            -- Dollar-quote: skip to closing tag
-            local tag_end = sql_text:find("$", i + 1, true)
-            if tag_end then
-                local tag = sql_text:sub(i, tag_end)
-                if tag:match("^%$[%w_]*%$$") then
-                    -- Find closing tag
-                    local close_start = sql_text:find(tag, tag_end + 1, true)
-                    if close_start then
-                        i = close_start + #tag
-                    else
-                        i = tag_end + 1
-                    end
-                else
-                    -- Not a dollar quote, treat as regular char
-                    if current_token ~= "" then
-                        table.insert(tokens, current_token)
-                        current_token = ""
-                    end
-                    i = i + 1
-                end
-            else
+            local new_i = M.scan_quoted(sql_text, i, '$')
+            if new_i == i + 1 then
+                -- Not a dollar quote
                 if current_token ~= "" then
                     table.insert(tokens, current_token)
                     current_token = ""
                 end
-                i = i + 1
             end
+            i = new_i
 
         elseif ch:match("[%w_]") then
             -- Part of a word
