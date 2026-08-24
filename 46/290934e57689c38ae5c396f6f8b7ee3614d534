@@ -1,0 +1,52 @@
+src/app.lua
+  s_b85bcdda606f39::t_9469bba7e553c0 1,8-9,19,21-23,25,29,31-33,35,41-43,46-47,56,70,100,104-113,118-134,137,139-145,147,149,152,156-160
+  s_b85bcdda606f39::t_3a3f62c9514b7a 83,101
+  s_b85bcdda606f39::t_1616e0beb3bc3b 3
+  s_b85bcdda606f39::t_02b6c8a0dc65ef 92-99
+src/ui/draw.lua
+  s_b85bcdda606f39::t_5eeb2b3b1e1ed2 1-115
+tests/ui/layout_test.lua
+  s_b85bcdda606f39::t_6305c2570e5691 1-36
+src/db/adapter.lua
+  s_b85bcdda606f39::t_c140173bc2fe3a 26-44
+src/utils/syntax.lua
+  s_b85bcdda606f39::t_23b44a316d1572 87,93,99,110
+  s_b85bcdda606f39::t_67499375f9feb8 2-4
+tests/ui/commands_test.lua
+  s_b85bcdda606f39::t_36630ae1d2f02d 1-26
+src/ui/commands.lua
+  s_b85bcdda606f39::t_924bcd495ebef8 1-6,8-20
+  s_b85bcdda606f39::t_e757785589f77d 7
+src/ui/keys.lua
+  s_b85bcdda606f39::t_89c19c12dae0df 3-4,20-22,47
+  s_b85bcdda606f39::t_054ff168a0e393 1-2,5-19,23-46,48-167
+tests/integration/execution_test.lua
+  s_b85bcdda606f39::t_b4b1456ad86943 150-155,157-158,167-168
+src/cli.lua
+  s_b85bcdda606f39::t_4b39ac540a74c5 1-62
+src/sql/parse.lua
+  s_b85bcdda606f39::t_e03662c8cdb1b2 176,180,184
+  s_b85bcdda606f39::t_9de68c06ed613f 319,322,325,328,331,334-336,342
+  s_b85bcdda606f39::t_507c92ecfd2659 174-175,179,183
+  s_b85bcdda606f39::t_39877fccd7e88f 55-105
+src/core/execution.lua
+  s_b85bcdda606f39::t_d64c4c39c3ab8c 6,34-38,42,132,390,392
+tests/utils_syntax_test.lua
+  s_b85bcdda606f39::t_586c64e9cdf33e 17-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "46290934e57689c38ae5c396f6f8b7ee3614d534",
+  "prompts": {},
+  "sessions": {
+    "s_b85bcdda606f39": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a03061-1f14-70b9-87d5-3b135f20d3c3",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
