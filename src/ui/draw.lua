@@ -91,14 +91,14 @@ function M.status(term, app_state, region, theme, exec, command_mode)
     term.text(region.x, region.y, " " .. table.concat(parts, " | "), theme.status_fg, theme.status_bg)
 end
 
-function M.sidebar(term, app_state, region, theme, adapter, terminal)
+function M.sidebar(term, app_state, region, theme, terminal)
     term.text(region.x + 1, region.y, "Connections", theme.keyword, theme.bg)
     local color = app_state.connection_status == "connected" and terminal.GREEN
         or app_state.connection_status == "connecting" and terminal.YELLOW or terminal.RED
     term.text(region.x + 1, region.y + 1, "* " .. (app_state.connection_name or "none"), color, theme.bg)
-    if adapter and app_state.connection_status == "connected" then
+    if app_state.connection_status == "connected" then
         term.text(region.x + 1, region.y + 3, "Tables", theme.keyword, theme.bg)
-        for i, name in ipairs(adapter:list_tables()) do
+        for i, name in ipairs(app_state.tables or {}) do
             if region.y + 3 + i >= region.y + region.height then break end
             term.text(region.x + 2, region.y + 3 + i, name, theme.sidebar_fg, theme.bg)
         end

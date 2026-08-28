@@ -92,6 +92,7 @@ function M.run(args)
     local app_state = {
         connection_name = connection_name,
         connection_status = "connected",
+        tables = adapter:list_tables(),
         focus = "editor",
         status_message = "",
         elapsed_ms = 0,
@@ -154,7 +155,7 @@ function M.run(args)
         terminal.clear()
         local regions = layout.calculate(terminal, config)
         if not regions then draw.too_small(terminal, terminal); return end
-        draw.sidebar(terminal, app_state, regions.sidebar, theme, adapter, terminal)
+        draw.sidebar(terminal, app_state, regions.sidebar, theme, terminal)
         draw.editor(terminal, editor, regions.editor, theme)
         draw.grid(terminal, ui.last_result, regions.grid, theme, ui.grid_page, ui.grid_page_size)
         draw.status(terminal, app_state, regions.status, theme, exec, ui.command_mode)

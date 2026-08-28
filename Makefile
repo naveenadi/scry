@@ -121,7 +121,7 @@ release: clean
 
 test: scry $(LUAJIT_BIN)
 	@echo 'Running tests...'
-	@for f in tests/**/*_test.lua; do \
+	@for f in $$(find tests -type f -name '*_test.lua' | sort); do \
 		echo "  $$f"; \
 		case "$$f" in \
 			tests/integration/*) ./scry --run "$$f" || exit 1 ;; \
