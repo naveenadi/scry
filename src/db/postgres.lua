@@ -4,6 +4,7 @@
 -- close_result() drains remaining results — luasql's cursor close does NOT do this.
 
 local adapter = require("src.db.adapter")
+local row_builder = require("src.db.row_builder")
 
 local M = {}
 
@@ -174,17 +175,7 @@ function M.new()
             return nil
         end
 
-        -- Keep named fields for callers and add positional fields for the grid.
-        -- LuaSQL omits NULL-valued named fields, so use column metadata to
-        -- preserve their position with the adapter NULL sentinel.
-        for i, name in ipairs(self._columns or {}) do
-            if row[name] == nil then
-                row[name] = adapter.NULL
-            end
-            row[i] = row[name]
-        end
-
-        return row
+        return row_builder.normalize_row(row, self._columns)
     end
 
     -- Close the current result set and drain remaining results.
