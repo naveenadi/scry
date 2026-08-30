@@ -58,49 +58,36 @@ function M.new(ctx)
         if command == "quit" then
             ctx.loop:stop()
         elseif command == "connect" then
-            if argument and argument ~= "" then
-                local conn_config = ctx.config.connections[argument]
-                if conn_config then
-                    ctx.adapter:close()
-                    local new_adapter
-                    if conn_config.type == "sqlite" then
-                        new_adapter = require("src.db.sqlite").new()
-                    elseif conn_config.type == "postgres" then
-                        new_adapter = require("src.db.postgres").new()
-                    elseif conn_config.type == "mysql" then
-                        new_adapter = require("src.db.mysql").new()
-                    else
-                        ctx.state.status_message = "Unsupported type: " .. (conn_config.type or "nil")
-                        finish_command()
-                        return
-                    end
-                    local ok, err = new_adapter:connect(conn_config)
-                    if ok then
-                        ctx.adapter = new_adapter
-                        ctx.connection_config = conn_config
-                        ctx.state.connection_name = argument
-                        ctx.state.connection_status = "connected"
-                        ctx.state.tables = new_adapter:list_tables()
-                        ctx.state.status_message = "Connected to " .. argument
-                        -- Rebuild execution with new adapter
-                        ctx.execution = require("src.core.execution").new(
-                            new_adapter, ctx.config, ctx.read_only)
-                        ctx.state.status_message = "Connected to " .. argument
-                    else
-                        ctx.state.status_message = "Connect failed: " .. (err or "?")
-                    end
-                else
-                    ctx.state.status_message = "Unknown connection: " .. argument
-                end
-            else
+            if not argument or argument == "" then
                 ctx.state.status_message = "Usage: :connect NAME"
+            elseif ctx.execution:is_running() then
+                ctx.state.status_message = "Query in progress — wait for completion or Ctrl+c to cancel"
+            else
+                local ok, err = ctx.connection_manager:switch(argument)
+                if ok then
+                    ctx.adapter = ctx.connection_manager:get_adapter()
+                    ctx.connection_config = ctx.connection_manager:get_connection_config()
+                    ctx.execution = ctx.rebuild_execution(ctx.adapter)
+                    ctx.state.connection_name = argument
+                    ctx.state.connection_status = "connected"
+                    ctx.state.tables = ctx.adapter:list_tables()
+                    ctx.state.status_message = "Connected to " .. argument
+                else
+                    ctx.state.status_message = "Connect failed: " .. (err or "?")
+                end
             end
         elseif command == "reconnect" then
-            if ctx.execution.state == ctx.execution.RECONNECT_CONFIRM
+            if ctx.execution:is_running() then
+                ctx.state.status_message = "Query in progress — wait for completion or Ctrl+c to cancel"
+            elseif ctx.execution.state == ctx.execution.RECONNECT_CONFIRM
                 and ctx.execution:confirm_reconnect() then
-                local ok, err = ctx.adapter:connect(ctx.connection_config)
+                local ok, err = ctx.connection_manager:reconnect()
                 if ok then
+                    ctx.adapter = ctx.connection_manager:get_adapter()
+                    ctx.connection_config = ctx.connection_manager:get_connection_config()
+                    ctx.execution = ctx.rebuild_execution(ctx.adapter)
                     ctx.state.connection_status = "connected"
+                    ctx.state.tables = ctx.adapter:list_tables()
                     ctx.state.status_message = "Reconnected"
                 else
                     ctx.state.status_message = "Reconnect failed: " .. (err or "?")

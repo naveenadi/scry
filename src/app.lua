@@ -9,7 +9,7 @@ local draw = require("src.ui.draw")
 local keys_mod = require("src.ui.keys")
 local event_loop = require("src.core.event_loop")
 local execution = require("src.core.execution")
-local sqlite = require("src.db.sqlite")
+local connection_manager = require("src.connection.manager")
 local platform = require("src.platform")
 local history_store = require("src.history.store")
 
@@ -73,22 +73,16 @@ function M.run(args)
         return 1
     end
 
-    local adapter
-    if connection_config.type == "sqlite" then
-        adapter = sqlite.new()
-    else
-        terminal.shutdown()
-        io.stderr:write("error: unsupported database type: " .. (connection_config.type or "nil") .. "\n")
-        return 1
-    end
-    local read_only = options.read_only or connection_config.read_only == true
-
-    local ok, err = adapter:connect(connection_config)
+    local manager = connection_manager.new(config, platform)
+    local ok, err = manager:switch(connection_name)
     if not ok then
         terminal.shutdown()
         io.stderr:write("error: " .. (err or "connection failed") .. "\n")
         return 1
     end
+    local adapter = manager:get_adapter()
+    local connection_config = manager:get_connection_config()
+    local read_only = options.read_only or connection_config.read_only == true
 
     local app_state = {
         connection_name = connection_name,
@@ -100,8 +94,6 @@ function M.run(args)
         row_count = 0,
     }
     local editor = editor_mod.new()
-    local exec = execution.new(adapter, config, read_only)
-    local loop = event_loop.new(terminal, app_state, exec)
     local theme = themes[config.general.theme] or themes.dark
     local ui = {
         grid_page = 1,
@@ -123,10 +115,20 @@ function M.run(args)
     })
     history:load()
 
-    exec.on_history_entry = function(text, outcome)
-        history:append(text, outcome or "success")
-        ui.history_index = 0
+    local exec
+    local loop
+    local function rebuild_execution(new_adapter)
+        exec = execution.new(new_adapter, config, read_only)
+        exec.on_history_entry = function(text, outcome)
+            history:append(text, outcome or "success")
+            ui.history_index = 0
+        end
+        if loop then loop.execution = exec end
+        return exec
     end
+
+    exec = rebuild_execution(adapter)
+    loop = event_loop.new(terminal, app_state, exec)
 
     local context = {
         terminal = terminal,
@@ -138,6 +140,8 @@ function M.run(args)
         execution = exec,
         adapter = adapter,
         connection_config = connection_config,
+        connection_manager = manager,
+        rebuild_execution = rebuild_execution,
         history = history,
         config = config,
         read_only = read_only,
@@ -189,7 +193,7 @@ function M.run(args)
     end
 
     loop:run()
-    adapter:close()
+    manager:close()
     terminal.shutdown()
     return 0
 end
