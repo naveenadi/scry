@@ -1,0 +1,21 @@
+tests/ssh/tunnel_test.lua
+  s_cc89d1d392ecb8::t_2ef750e9449a1b 1-154
+src/ssh/tunnel.lua
+  s_cc89d1d392ecb8::t_3d7f4ecc58a88a 1-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0e7c487cd40c19018c63eb6c53f67f238287c027",
+  "prompts": {},
+  "sessions": {
+    "s_cc89d1d392ecb8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0499c-c7cc-7248-a943-dbc70f073e61",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
