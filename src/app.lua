@@ -111,6 +111,10 @@ function M.run(args)
         command_mode = false,
         command_buffer = "",
         history_index = 0,
+        show_help = false,
+        help_lines = nil,  -- nil = use default HELP_LINES
+        help_title = nil,
+        sidebar_state = { selected = 1, scroll = 0 },
     }
     local history = {}
 
@@ -131,6 +135,8 @@ function M.run(args)
         adapter = adapter,
         connection_config = connection_config,
         history = history,
+        config = config,
+        read_only = read_only,
     }
     loop.key_handler_fn = keys_mod.new(context)
 
@@ -152,13 +158,29 @@ function M.run(args)
         end
         if ui.command_mode then app_state.status_message = ":" .. ui.command_buffer end
 
+        -- Page info for status bar
+        if ui.last_result and ui.last_result.rows then
+            local total = #ui.last_result.rows
+            local pages = math.ceil(total / ui.grid_page_size)
+            app_state.page_info = string.format("Page %d/%d", ui.grid_page, pages)
+        else
+            app_state.page_info = nil
+        end
+
         terminal.clear()
         local regions = layout.calculate(terminal, config)
         if not regions then draw.too_small(terminal, terminal); return end
-        draw.sidebar(terminal, app_state, regions.sidebar, theme, terminal)
+        draw.sidebar(terminal, app_state, regions.sidebar, theme, terminal, ui.sidebar_state)
         draw.editor(terminal, editor, regions.editor, theme)
         draw.grid(terminal, ui.last_result, regions.grid, theme, ui.grid_page, ui.grid_page_size)
-        draw.status(terminal, app_state, regions.status, theme, exec, ui.command_mode)
+        draw.status(terminal, app_state, regions.status, theme, exec, ui.command_mode, app_state.focus)
+        if ui.show_help then
+            local help_title = ui.help_title or "Help"
+            local help_lines = ui.help_lines or keys_mod.HELP_LINES
+            draw.modal(terminal, help_title, help_lines, regions.editor, theme, terminal)
+            ui.help_lines = nil  -- reset after drawing
+            ui.help_title = nil
+        end
         terminal.present()
     end
 

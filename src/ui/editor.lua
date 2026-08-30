@@ -39,6 +39,17 @@ function M.new()
         self.cursor_x = self.cursor_x + #ch
     end
 
+    -- Insert a string at the cursor position.
+    function self:insert_text(text)
+        for ch in text:gmatch(".") do
+            if ch == "\n" then
+                self:insert_newline()
+            else
+                self:insert_char(ch)
+            end
+        end
+    end
+
     -- Insert a newline.
     function self:insert_newline()
         local line = self.lines[self.cursor_y + 1]
