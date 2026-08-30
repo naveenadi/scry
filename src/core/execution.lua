@@ -318,8 +318,15 @@ function M.new(adapter, config, read_only)
     -- Returns true if the execution has new state to report.
     function self:poll()
         if self.state == M.QUERYING or self.state == M.DRAINING then
-            -- Poll the adapter
+            -- Poll the adapter while the Statement is in flight or draining,
+            -- then advance even if polling made progress this tick.
             self.adapter:poll()
+            self:_advance()
+            return true
+        end
+
+        if self.state == M.MATERIALIZING or self.state == M.FETCHING then
+            -- Advance every other runnable state once per event-loop tick.
             self:_advance()
             return true
         end

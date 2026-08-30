@@ -113,6 +113,28 @@ h.test("execution: single SELECT statement", function()
     h.assert_eq(result.row_count, 2, "row_count")
 end)
 
+h.test("execution: poll advances FETCHING after row budget", function()
+    local rows = {}
+    for i = 1, 5 do rows[i] = { i, "row" .. i } end
+
+    local adapter = mock_adapter({ rows = rows })
+    local exec = execution.new(adapter, config)
+    exec.row_budget = 2
+    exec:execute("SELECT 1")
+
+    exec:poll()
+    h.assert_eq(exec.state, execution.FETCHING, "state after first budget")
+    h.assert_eq(#exec.current_rows, 2, "rows after first budget")
+
+    exec:poll()
+    h.assert_eq(exec.state, execution.FETCHING, "state after second budget")
+    h.assert_eq(#exec.current_rows, 4, "rows after second budget")
+
+    exec:poll()
+    h.assert_eq(exec.state, execution.COMPLETE, "state after final budget")
+    h.assert_eq(exec:get_result().row_count, 5, "final row_count")
+end)
+
 h.test("execution: multi-statement halt-on-first-failure", function()
     local adapter = mock_adapter()
     local exec = execution.new(adapter, config)
