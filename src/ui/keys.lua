@@ -213,7 +213,8 @@ function M.new(ctx)
             local meta = ctx.execution:get_metadata()
             local successful_count, statement_sql = 0, nil
             for _, result in ipairs(meta.statements or {}) do
-                if result.status == "success" then
+                if result.status == "success"
+                    and result.columns and #result.columns > 0 then
                     successful_count = successful_count + 1
                     statement_sql = result.sql
                 end
