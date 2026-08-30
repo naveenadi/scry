@@ -1,0 +1,19 @@
+src/ui/keys.lua
+  s_36ce6b01dd12ae::t_cd4a41ba744ed6 216-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "44fce5150991357fefb31bab0d0d8921547f25be",
+  "prompts": {},
+  "sessions": {
+    "s_36ce6b01dd12ae": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a05424-4bfb-72cd-92dc-b63b28d9abd8",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
