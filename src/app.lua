@@ -11,6 +11,7 @@ local event_loop = require("src.core.event_loop")
 local execution = require("src.core.execution")
 local sqlite = require("src.db.sqlite")
 local platform = require("src.platform")
+local history_store = require("src.history.store")
 
 local M = {}
 
@@ -116,11 +117,14 @@ function M.run(args)
         help_title = nil,
         sidebar_state = { selected = 1, scroll = 0 },
     }
-    local history = {}
+    local history = history_store.new(platform, {
+        history_limit = config.query_editor and config.query_editor.history_limit or 1000,
+        history_max_entry_bytes = config.query_editor and config.query_editor.history_max_entry_bytes or 100000,
+    })
+    history:load()
 
-    exec.on_history_entry = function(text)
-        table.insert(history, 1, text)
-        if #history > (config.query_editor.history_limit or 1000) then table.remove(history) end
+    exec.on_history_entry = function(text, outcome)
+        history:append(text, outcome or "success")
         ui.history_index = 0
     end
 

@@ -118,12 +118,13 @@ function M.new(ctx)
         elseif command == "help" then
             ui.show_help = true
         elseif command == "history" then
-            if #ctx.history == 0 then
+            local sql_list = ctx.history:sql_list()
+            if #sql_list == 0 then
                 ctx.state.status_message = "No history"
             else
                 local lines = {}
-                for i = 1, math.min(20, #ctx.history) do
-                    lines[i] = ctx.history[i]
+                for i = 1, math.min(20, #sql_list) do
+                    lines[i] = sql_list[i]
                 end
                 ui.help_lines = lines
                 ui.help_title = "History (last " .. #lines .. ")"
@@ -195,17 +196,19 @@ function M.new(ctx)
         end
 
         if pressed(event, terminal.KEY_CTRL_P) then
-            if ui.history_index < #ctx.history then
+            local sql_list = ctx.history:sql_list()
+            if ui.history_index < #sql_list then
                 ui.history_index = ui.history_index + 1
-                ctx.editor:set_text(ctx.history[ui.history_index])
+                ctx.editor:set_text(sql_list[ui.history_index])
             end
             return
         end
 
         if pressed(event, terminal.KEY_CTRL_N) then
+            local sql_list = ctx.history:sql_list()
             if ui.history_index > 1 then
                 ui.history_index = ui.history_index - 1
-                ctx.editor:set_text(ctx.history[ui.history_index])
+                ctx.editor:set_text(sql_list[ui.history_index])
             else
                 ui.history_index = 0
                 ctx.editor:set_text("")

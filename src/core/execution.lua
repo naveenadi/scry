@@ -95,11 +95,6 @@ function M.new(adapter, config, read_only)
         self.cancel_requested = false
         self.needs_reconnect = false
 
-        -- Record history entry
-        if self.on_history_entry then
-            self.on_history_entry(buffer_text)
-        end
-
         self.state = M.SPLITTING
         return self:_advance()
     end
@@ -297,9 +292,17 @@ function M.new(adapter, config, read_only)
                 return
 
             elseif self.state == M.COMPLETE then
+                -- Record history on completion
+                if self.on_history_entry then
+                    self.on_history_entry(self.buffer_text, self.execution_status)
+                end
                 return
 
             elseif self.state == M.EXECUTION_FAILED then
+                -- Record history on failure
+                if self.on_history_entry then
+                    self.on_history_entry(self.buffer_text, self.execution_status)
+                end
                 return
 
             elseif self.state == M.BLOCKED then
