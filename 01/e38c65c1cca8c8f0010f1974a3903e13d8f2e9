@@ -1,0 +1,54 @@
+README.md
+  s_cc89d1d392ecb8::t_09b29d7fa0cea7 3,5-190
+install.sh
+  s_cc89d1d392ecb8::t_78c1e7264dcddc 1-7,10-28
+  s_cc89d1d392ecb8::t_f214e48be836ea 8-9
+build.sh
+  s_cc89d1d392ecb8::t_2a427d2c368df6 1-19
+src/db/postgres.lua
+  s_cc89d1d392ecb8::t_ae593862221453 165,177-182,184
+  s_cc89d1d392ecb8::t_e6a5a7ce173eff 102-103,108,112-113,133,141
+  s_cc89d1d392ecb8::t_1a6f7dfa79b4d4 1-101,104-107,109-111,114-132,134-140,142-144,147-156,158-164,166-176,183,185-221,224-226,228-337
+  s_cc89d1d392ecb8::t_020c41e5e3efff 145-146,157
+  s_cc89d1d392ecb8::t_95ad9e9afaf732 222-223,227
+src/ui/draw.lua
+  s_cc89d1d392ecb8::t_8225487421bad1 81,85-88,91,98,105-110,112-120,122-162
+.github/workflows/ci.yml
+  s_cc89d1d392ecb8::t_958aaf6f164f9b 1-67
+src/app.lua
+  s_cc89d1d392ecb8::t_2c6d32b2568980 114-117
+  s_cc89d1d392ecb8::t_bc661a7f0b889d 138-139
+  s_cc89d1d392ecb8::t_922fd7677f4651 161-169,173,176-183
+src/ui/keys.lua
+  s_cc89d1d392ecb8::t_639b7f013483ad 8
+  s_cc89d1d392ecb8::t_290144a5bafdc5 161-166
+  s_cc89d1d392ecb8::t_a2a8d2b84c7b6b 222-227,229-232,237-257
+  s_cc89d1d392ecb8::t_92e1aadd06ab68 7,9-42
+  s_cc89d1d392ecb8::t_e4ab700639cfe8 60-97,119-131
+  s_cc89d1d392ecb8::t_21fc0bf271f8c4 258
+src/ui/commands.lua
+  s_cc89d1d392ecb8::t_04b1a33715a9dc 6-7,16-20
+examples/.scry_config.lua.example
+  s_cc89d1d392ecb8::t_488c63a8a2ab03 2-3,7,10-15
+  s_cc89d1d392ecb8::t_d7a1f3557194a7 16
+src/ui/editor.lua
+  s_cc89d1d392ecb8::t_f6cd81e35201c4 42-52
+src/db/mysql.lua
+  s_cc89d1d392ecb8::t_ec43935de528cd 1-318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "01e38c65c1cca8c8f0010f1974a3903e13d8f2e9",
+  "prompts": {},
+  "sessions": {
+    "s_cc89d1d392ecb8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0499c-c7cc-7248-a943-dbc70f073e61",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
