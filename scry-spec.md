@@ -257,7 +257,7 @@ MySQL Phase 1 limitation: `result_streaming=false` because LuaSQL PR #201 uses `
 These tests verify the adapter contract against the actual driver behavior, not just the LuaSQL API surface.
 
 Notes on the contract:
-- **`next_row()` is the only row-pull primitive.** There is no `get_result()`-style method that materializes the whole Result set. Consumers (grid, export) build whatever convenience they need on top of `next_row()` themselves — the grid caps at `max_result_rows`, the export streams-to-file. This is the architectural fix that prevents a naive implementation from materializing 100 000 rows before the consumer gets control.
+- **`get_result()` acquires the Result set; `next_row()` is the only row-consumption primitive.** `get_result()` may perform driver-specific initialization or blocking result transfer, but it must not be used to materialize the whole Result set for consumers. The grid and export build their own behavior on top of `next_row()` — the grid caps at `max_result_rows`, while export streams to file. This prevents a naive consumer from materializing 100 000 rows before it gets control.
 - `columns()` is valid only after `state()` reports `FETCHING` or `READY`. It returns an empty list (not nil) if the Result set has no columns (e.g. an `UPDATE` that affected rows).
 - `next_row()` returns `nil` at end-of-results. A row whose first column is the explicit `NULL` sentinel is **not** end-of-results; only `nil` is.
 - `close_result()` is mandatory. The cursor / prepared statement holds client-library resources until released; leaking it across many Executions accumulates server-side state and eventually fails. After `close_result()`, calling `next_row()` again on the same Result set is undefined.
@@ -619,7 +619,7 @@ The editor uses always-insert mode. Command mode is a separate, visible mode for
 - **Grid consumer** — materializes rows into the in-memory page buffer; stops buffering once `general.max_result_rows` is reached and reports the limit clearly. Sorting/filtering apply to the loaded (possibly capped) result. No disk-backed result storage required for Phase 1.
 - **Export consumer** — `Ctrl+e` (CSV) and `Ctrl+Shift+e` (JSON) read off the row stream directly and write to the output file as rows arrive. **Not** bounded by `max_result_rows`.
 
-The two consumers must not share a materialized buffer. If the implementation first materializes the whole result and then exports from that buffer, the memory guarantee on the grid is meaningless and a large export still costs the same memory as the grid — defeating the point. The contract has no `get_result()`-style method exactly so the wrong implementation cannot ship accidentally — each consumer pulls what it needs off `next_row()`. Document this distinction (grid: capped, export: full) in the README so it isn't surprising.
+The two consumers must not share a materialized buffer. If the implementation first materializes the whole result and then exports from that buffer, the memory guarantee on the grid is meaningless and a large export still costs the same memory as the grid — defeating the point. `get_result()` acquires or prepares the Result set; it is not a materialize-everything operation. Each consumer pulls what it needs from `next_row()`. Document this distinction (grid: capped, export: full) in the README so it isn't surprising.
 
 **Driver-level buffering asymmetry.** `next_row()` is the sole logical row-pull primitive, but the adapter contract does not guarantee identical physical buffering semantics across drivers:
 
