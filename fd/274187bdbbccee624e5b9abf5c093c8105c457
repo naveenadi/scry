@@ -1,0 +1,27 @@
+src/db/row_builder.lua
+  s_36ce6b01dd12ae::t_6b11b3e86e15db 1-22
+src/db/adapter.lua
+  s_36ce6b01dd12ae::t_a6cc08ff509e93 21-23
+src/db/sqlite.lua
+  s_36ce6b01dd12ae::t_16ef0fdcabc641 5,149
+src/db/mysql.lua
+  s_36ce6b01dd12ae::t_2ffae08556c260 9,185
+src/db/postgres.lua
+  s_36ce6b01dd12ae::t_c028715083354a 7,178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fd274187bdbbccee624e5b9abf5c093c8105c457",
+  "prompts": {},
+  "sessions": {
+    "s_36ce6b01dd12ae": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a05424-4bfb-72cd-92dc-b63b28d9abd8",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
