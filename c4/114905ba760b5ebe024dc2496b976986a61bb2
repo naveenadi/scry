@@ -1,0 +1,19 @@
+tests/sql/fuzz_split_statements.lua
+  s_cc89d1d392ecb8::t_d315d9eaca320f 1-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c4114905ba760b5ebe024dc2496b976986a61bb2",
+  "prompts": {},
+  "sessions": {
+    "s_cc89d1d392ecb8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0499c-c7cc-7248-a943-dbc70f073e61",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
