@@ -1,0 +1,25 @@
+tests/integration/adapters/contract_test.lua
+  s_36ce6b01dd12ae::t_d15087349c70c4 13
+  s_36ce6b01dd12ae::t_2d4703726eb835 26,39-45
+  s_36ce6b01dd12ae::t_c3f5f0592d7a49 10-12
+  s_36ce6b01dd12ae::t_7b2902442877bb 14-16,23-25
+  s_36ce6b01dd12ae::t_373379ab8f6cd5 27-29,36-38
+  s_36ce6b01dd12ae::t_dcaaf33be80838 46-48
+  s_36ce6b01dd12ae::t_bb4d546e4dee32 1-9,17-22,30-35,49-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "459d85ca4ad82e74c54a22278d83f219f9a5b772",
+  "prompts": {},
+  "sessions": {
+    "s_36ce6b01dd12ae": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a05424-4bfb-72cd-92dc-b63b28d9abd8",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
