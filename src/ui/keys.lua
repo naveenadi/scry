@@ -195,6 +195,38 @@ function M.new(ctx)
             return
         end
 
+        -- Export: Ctrl+e = CSV, Ctrl+Shift+E = JSON
+        if pressed(event, terminal.KEY_CTRL_E) and ctx.state.focus ~= "editor" then
+            if not ui.last_result or not ui.last_result.columns then
+                ctx.state.status_message = "No results to export"
+                return
+            end
+            local csv_mod = require("src.export.csv")
+            local path = os.tmpname() .. ".csv"
+            local ok, err = csv_mod.to_file(path, ui.last_result.columns, ui.last_result.rows or {})
+            if ok then
+                ctx.state.status_message = "Exported CSV: " .. path
+            else
+                ctx.state.status_message = "Export failed: " .. (err or "?")
+            end
+            return
+        end
+        if event.type == "char" and event.ch == string.byte("E") then
+            if not ui.last_result or not ui.last_result.columns then
+                ctx.state.status_message = "No results to export"
+                return
+            end
+            local json_mod = require("src.export.json")
+            local path = os.tmpname() .. ".json"
+            local ok, err = json_mod.to_file(path, ui.last_result.columns, ui.last_result.rows or {})
+            if ok then
+                ctx.state.status_message = "Exported JSON: " .. path
+            else
+                ctx.state.status_message = "Export failed: " .. (err or "?")
+            end
+            return
+        end
+
         if pressed(event, terminal.KEY_CTRL_P) then
             local sql_list = ctx.history:sql_list()
             if ui.history_index < #sql_list then
