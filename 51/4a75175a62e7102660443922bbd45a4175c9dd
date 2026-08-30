@@ -1,0 +1,28 @@
+tests/export/csv_test.lua
+  s_cc89d1d392ecb8::t_235da3f3a84e13 1-74
+src/export/json.lua
+  s_cc89d1d392ecb8::t_828ef7669857f0 1-68
+src/ui/keys.lua
+  s_cc89d1d392ecb8::t_6c18ea7fdfe527 198-229
+tests/export/json_test.lua
+  s_cc89d1d392ecb8::t_e699f145f2df6d 1-60,62-85
+  s_cc89d1d392ecb8::t_b951e4e6630edd 61
+src/export/csv.lua
+  s_cc89d1d392ecb8::t_b5585f5b201a31 1-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "514a75175a62e7102660443922bbd45a4175c9dd",
+  "prompts": {},
+  "sessions": {
+    "s_cc89d1d392ecb8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0499c-c7cc-7248-a943-dbc70f073e61",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
