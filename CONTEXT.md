@@ -25,7 +25,7 @@ One syntactically complete SQL command extracted from the Buffer by the statemen
 _Avoid_: query, SQL command
 
 **Execution**:
-One `Ctrl+r` press. Runs one or more Statements from the Buffer (or Selection) using an async poll loop (`send_query` → poll with UI redraw → `columns()` + repeated `next_row()` until `nil` → `close_result()`). Halts on first failure but surfaces all prior Result sets. `Ctrl+c` during the poll loop cancels via close-and-reconnect (see ADR-0004). The adapter contract exposes `next_row()` only — no `get_result()`-style materialize-everything method, by design (see ADR-0003).
+One `Ctrl+r` press. Runs one or more Statements from the Buffer (or Selection) using an async poll loop (`send_query` → poll with UI redraw → `get_result()` → `columns()` + repeated `next_row()` until `nil` → `close_result()`). `get_result()` acquires or prepares the current Result set and may be driver-dependent or blocking; `next_row()` remains the only row-consumption primitive. Halts on first failure but surfaces all prior Result sets. `Ctrl+c` during the poll loop cancels via close-and-reconnect (see ADR-0004).
 _Avoid_: query execution, run
 
 **Result set**:

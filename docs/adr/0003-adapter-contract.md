@@ -1,4 +1,4 @@
-# Adapter contract: async execution, single-Statement per call, no transaction API, streaming-only row access
+# Adapter contract: async execution, single-Statement per call, result acquisition plus streaming row access
 
 The adapter contract is:
 
@@ -6,10 +6,11 @@ The adapter contract is:
 connect(config)        → Connection
 send_query(sql)        → void            (non-blocking, starts the query)
 poll()                 → boolean         (returns true when result is still in flight)
-state()                → string          (CONNECTING / READY / QUERYING / FETCHING / ERROR / CANCELED / CONNECTION_LOST)
+state()                → string          (CONNECTING / READY / QUERYING / RESULT_READY / MATERIALIZING / FETCHING / ERROR / CANCELED / CONNECTION_LOST)
 error()                → string|nil
+get_result()           → result | nil    (acquire/prepare the current result; may be driver-dependent or blocking)
 columns()              → column metadata (valid once state() reports columns are available)
-next_row()             → row | nil       (real end-of-results signal)
+next_row()             → row | nil       (the only row-consumption primitive; real end-of-results signal)
 close_result()         → void            (release per-result client-library resources)
 cancel()               → void            (closes the Connection; reconnect-confirmation flow runs)
 list_tables()          → string[]        (blocking — fast catalog query)
@@ -18,11 +19,13 @@ ping()                 → boolean         (blocking — fast health check)
 close()                → void
 ```
 
-## Streaming is the only row-pull primitive
+## Result acquisition and streaming row access
 
-The contract has **no `get_result()` method**. Consumers (grid, export) build whatever convenience they need on top of `next_row()` themselves. This is an explicit architectural choice — it prevents the naive implementation in which a wrapper materializes the entire Result set before the grid or export consumer gets control, defeating the grid's `max_result_rows` cap and the export's "stream straight to disk" property.
+The contract includes `get_result()` as a result-acquisition hook. It transitions a completed Statement into Result set consumption and may perform driver-specific initialization or blocking result transfer. Consumers must not use it to materialize rows.
 
-The underlying client library (luasql) does expose a `get_result()` method that returns a cursor. Each adapter implementation may use it internally as an implementation detail — what matters is that *scry's* contract exposes `next_row()` only, so the footgun cannot ship at the contract level.
+`next_row()` is the only row-consumption primitive. Consumers (grid, export) build whatever convenience they need on top of it themselves. This prevents a wrapper from materializing the entire Result set before the grid or export consumer gets control, preserving the grid's `max_result_rows` cap and the export's "stream straight to disk" property.
+
+The adapter's `get_result()` may call the underlying client library's result-acquisition method, but its row contract remains streaming-only: callers consume rows through `next_row()` until it returns `nil`.
 
 ## Why async for Statement execution
 
