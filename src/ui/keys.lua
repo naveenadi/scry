@@ -62,6 +62,8 @@ function M.new(ctx)
                 ctx.state.status_message = "Usage: :connect NAME"
             elseif ctx.execution:is_running() then
                 ctx.state.status_message = "Query in progress — wait for completion or Ctrl+c to cancel"
+            elseif ctx.export and ctx.export:is_running() then
+                ctx.state.status_message = "Export in progress — wait for completion"
             else
                 local ok, err = ctx.connection_manager:switch(argument)
                 if ok then
@@ -79,6 +81,8 @@ function M.new(ctx)
         elseif command == "reconnect" then
             if ctx.execution:is_running() then
                 ctx.state.status_message = "Query in progress — wait for completion or Ctrl+c to cancel"
+            elseif ctx.export and ctx.export:is_running() then
+                ctx.state.status_message = "Export in progress — wait for completion"
             elseif ctx.execution.state == ctx.execution.RECONNECT_CONFIRM
                 and ctx.execution:confirm_reconnect() then
                 local ok, err = ctx.connection_manager:reconnect()
@@ -161,6 +165,10 @@ function M.new(ctx)
         end
 
         if pressed(event, terminal.KEY_CTRL_R) then
+            if ctx.export and ctx.export:is_running() then
+                ctx.state.status_message = "Export in progress — wait for completion"
+                return
+            end
             local text = ctx.editor:get_text()
             if text and text:match("%S") then
                 ui.exec_start_ms = ctx.platform.monotonic_ms()
@@ -176,38 +184,55 @@ function M.new(ctx)
             if ctx.execution:is_running() then
                 ctx.execution:cancel()
                 ctx.state.status_message = "Cancelled"
+            elseif ctx.export and ctx.export:is_running() then
+                ctx.export:cancel()
+                ctx.state.status_message = "Export cancelled"
             elseif ctx.execution.state == ctx.execution.RECONNECT_CONFIRM then
                 ctx.state.status_message = "Connection abandoned — :reconnect or :dismiss"
             end
             return
         end
 
-        -- Export: Ctrl+e = CSV, Ctrl+Shift+E = JSON
+        -- Export: Ctrl+e = CSV, E = JSON
+        local export_format
         if pressed(event, terminal.KEY_CTRL_E) and ctx.state.focus ~= "editor" then
-            if not ui.last_result or not ui.last_result.columns then
-                ctx.state.status_message = "No results to export"
-                return
-            end
-            local csv_mod = require("src.export.csv")
-            local path = os.tmpname() .. ".csv"
-            local ok, err = csv_mod.to_file(path, ui.last_result.columns, ui.last_result.rows or {})
-            if ok then
-                ctx.state.status_message = "Exported CSV: " .. path
-            else
-                ctx.state.status_message = "Export failed: " .. (err or "?")
-            end
-            return
+            export_format = "csv"
+        elseif event.type == "char" and event.ch == string.byte("E") then
+            export_format = "json"
         end
-        if event.type == "char" and event.ch == string.byte("E") then
-            if not ui.last_result or not ui.last_result.columns then
-                ctx.state.status_message = "No results to export"
+        if export_format then
+            if ctx.execution:is_running() then
+                ctx.state.status_message = "Query in progress — wait for completion"
                 return
             end
-            local json_mod = require("src.export.json")
-            local path = os.tmpname() .. ".json"
-            local ok, err = json_mod.to_file(path, ui.last_result.columns, ui.last_result.rows or {})
+            if ctx.export:is_running() then
+                ctx.state.status_message = "Export already in progress"
+                return
+            end
+
+            local meta = ctx.execution:get_metadata()
+            local successful_count, statement_sql = 0, nil
+            for _, result in ipairs(meta.statements or {}) do
+                if result.status == "success"
+                    and result.columns and #result.columns > 0 then
+                    successful_count = successful_count + 1
+                    statement_sql = result.sql
+                end
+            end
+            if not ui.last_result or not ui.last_result.columns or successful_count == 0 then
+                ctx.state.status_message = "No successful results to export"
+                return
+            end
+            if successful_count > 1 then
+                ctx.state.status_message = "Multiple results — export only one Statement in Phase 1"
+                return
+            end
+
+            local path = os.tmpname() .. "." .. export_format
+            local ok, err = ctx.export:execute(statement_sql, path, export_format)
             if ok then
-                ctx.state.status_message = "Exported JSON: " .. path
+                ui.export_reported = false
+                ctx.state.status_message = "Exporting " .. export_format:upper() .. "..."
             else
                 ctx.state.status_message = "Export failed: " .. (err or "?")
             end

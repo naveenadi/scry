@@ -10,6 +10,7 @@ local keys_mod = require("src.ui.keys")
 local event_loop = require("src.core.event_loop")
 local execution = require("src.core.execution")
 local connection_manager = require("src.connection.manager")
+local export_executor = require("src.export.executor")
 local platform = require("src.platform")
 local history_store = require("src.history.store")
 
@@ -108,6 +109,7 @@ function M.run(args)
         help_lines = nil,  -- nil = use default HELP_LINES
         help_title = nil,
         sidebar_state = { selected = 1, scroll = 0 },
+        export_reported = false,
     }
     local history = history_store.new(platform, {
         history_limit = config.query_editor and config.query_editor.history_limit or 1000,
@@ -116,6 +118,7 @@ function M.run(args)
     history:load()
 
     local exec
+    local export
     local loop
     local function rebuild_execution(new_adapter)
         exec = execution.new(new_adapter, config, read_only)
@@ -123,12 +126,18 @@ function M.run(args)
             history:append(text, outcome or "success")
             ui.history_index = 0
         end
+        if export then
+            export.adapter = new_adapter
+            ui.export_reported = false
+        end
         if loop then loop.execution = exec end
         return exec
     end
 
     exec = rebuild_execution(adapter)
+    export = export_executor.new(adapter)
     loop = event_loop.new(terminal, app_state, exec)
+    loop.export = export
 
     local context = {
         terminal = terminal,
@@ -142,6 +151,7 @@ function M.run(args)
         connection_config = connection_config,
         connection_manager = manager,
         rebuild_execution = rebuild_execution,
+        export = export,
         history = history,
         config = config,
         read_only = read_only,
@@ -163,6 +173,16 @@ function M.run(args)
         end
         if exec.state == execution.RECONNECT_CONFIRM and not ui.command_mode then
             app_state.status_message = "Connection abandoned — :reconnect or :dismiss"
+        end
+        if export and export:is_idle() and export.state ~= export_executor.IDLE
+            and not ui.export_reported and not ui.command_mode then
+            local status = export:get_status()
+            if export.state == export_executor.COMPLETE then
+                app_state.status_message = "Export complete: " .. status.output_path
+            else
+                app_state.status_message = "Export failed: " .. (status.error or "cancelled")
+            end
+            ui.export_reported = true
         end
         if ui.command_mode then app_state.status_message = ":" .. ui.command_buffer end
 

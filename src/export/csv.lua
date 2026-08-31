@@ -20,6 +20,8 @@ end
 -- columns: array of column name strings
 -- rows: array of row tables (positional keys)
 -- Returns CSV string.
+M._escape = csv_escape
+
 function M.to_string(columns, rows)
     local parts = {}
 

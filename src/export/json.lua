@@ -39,6 +39,8 @@ end
 -- columns: array of column name strings
 -- rows: array of row tables (positional keys)
 -- Returns JSON string (array of objects).
+M._value = json_value
+
 function M.to_string(columns, rows)
     local parts = {}
     for _, row in ipairs(rows) do

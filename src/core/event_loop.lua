@@ -30,8 +30,10 @@ function M.new(terminal, state, execution)
             self.execution:poll()
         end
 
-        -- 3. Execute bounded application work (row consumption)
-        -- (handled by execution:poll() above)
+        -- 3. Poll export (if active)
+        if self.export and self.export:is_running() then
+            self.export:poll()
+        end
 
         -- 4. Render
         if self.render_fn then
