@@ -18,6 +18,9 @@ M.CONNECTION_LOST = "CONNECTION_LOST"
 -- NULL sentinel — never bare Lua nil in row arrays
 M.NULL = { is_null = true }
 
+-- Adapters normalize rows with both named fields and positional fields in
+-- column order; SQL NULL is represented by M.NULL in either form.
+
 -- Check if a value is the NULL sentinel.
 function M.is_null(val)
     return type(val) == "table" and val.is_null == true
