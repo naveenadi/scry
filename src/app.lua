@@ -9,8 +9,9 @@ local draw = require("src.ui.draw")
 local keys_mod = require("src.ui.keys")
 local event_loop = require("src.core.event_loop")
 local execution = require("src.core.execution")
-local sqlite = require("src.db.sqlite")
+local adapter_factory = require("src.db.factory")
 local platform = require("src.platform")
+local grid_mod = require("src.ui.grid")
 local history_store = require("src.history.store")
 
 local M = {}
@@ -73,12 +74,10 @@ function M.run(args)
         return 1
     end
 
-    local adapter
-    if connection_config.type == "sqlite" then
-        adapter = sqlite.new()
-    else
+    local adapter, adapter_err = adapter_factory.create(connection_config.type)
+    if not adapter then
         terminal.shutdown()
-        io.stderr:write("error: unsupported database type: " .. (connection_config.type or "nil") .. "\n")
+        io.stderr:write("error: " .. (adapter_err or "adapter creation failed") .. "\n")
         return 1
     end
     local read_only = options.read_only or connection_config.read_only == true
@@ -104,9 +103,9 @@ function M.run(args)
     local loop = event_loop.new(terminal, app_state, exec)
     local theme = themes[config.general.theme] or themes.dark
     local ui = {
-        grid_page = 1,
-        grid_page_size = config.general.default_page_size or 100,
+        grid_view = grid_mod.new(config.general.default_page_size or 100),
         last_result = nil,
+        prepared_grid = nil,
         exec_start_ms = nil,
         result_consumed = true,
         command_mode = false,
@@ -123,10 +122,14 @@ function M.run(args)
     })
     history:load()
 
-    exec.on_history_entry = function(text, outcome)
-        history:append(text, outcome or "success")
-        ui.history_index = 0
+    local function attach_execution(active_exec)
+        active_exec.on_history_entry = function(text, outcome)
+            history:append(text, outcome or "success")
+            ui.history_index = 0
+        end
+        loop.execution = active_exec
     end
+    attach_execution(exec)
 
     local context = {
         terminal = terminal,
@@ -141,44 +144,62 @@ function M.run(args)
         history = history,
         config = config,
         read_only = read_only,
+        attach_execution = attach_execution,
     }
     loop.key_handler_fn = keys_mod.new(context)
 
     loop.render_fn = function()
+        local active_exec = context.execution
         if not ui.result_consumed
-            and (exec.state == execution.COMPLETE or exec.state == execution.EXECUTION_FAILED)
+            and (active_exec.state == execution.COMPLETE or active_exec.state == execution.EXECUTION_FAILED)
             and not ui.command_mode then
-            ui.last_result = exec:get_result()
+            ui.last_result = active_exec:get_result()
+            grid_mod.reset(ui.grid_view)
+            ui.prepared_grid = grid_mod.prepare(ui.last_result, ui.grid_view)
             app_state.row_count = ui.last_result.row_count or 0
-            app_state.status_message = ui.last_result.error or ""
+            local message = ui.last_result.error or ""
+            -- may_need_rollback: BEGIN without COMMIT/ROLLBACK on error
+            if active_exec.execution_status == "error"
+                and active_exec.buffer_text
+                and active_exec.buffer_text ~= ""
+            then
+                local upper = active_exec.buffer_text:upper()
+                if upper:find("%f[%w]BEGIN%f[%W]")
+                    and not upper:find("%f[%w]COMMIT%f[%W]")
+                    and not upper:find("%f[%w]ROLLBACK%f[%W]")
+                then
+                    if message ~= "" then message = message .. " — " end
+                    message = message .. "transaction may require ROLLBACK — :rollback :reconnect :dismiss"
+                end
+            end
+            app_state.status_message = message
             if ui.exec_start_ms then
                 app_state.elapsed_ms = platform.monotonic_ms() - ui.exec_start_ms
                 ui.exec_start_ms = nil
             end
             ui.result_consumed = true
         end
-        if exec.state == execution.RECONNECT_CONFIRM and not ui.command_mode then
+        if active_exec.state == execution.RECONNECT_CONFIRM and not ui.command_mode then
             app_state.status_message = "Connection abandoned — :reconnect or :dismiss"
         end
         if ui.command_mode then app_state.status_message = ":" .. ui.command_buffer end
-
-        -- Page info for status bar
-        if ui.last_result and ui.last_result.rows then
-            local total = #ui.last_result.rows
-            local pages = math.ceil(total / ui.grid_page_size)
-            app_state.page_info = string.format("Page %d/%d", ui.grid_page, pages)
-        else
-            app_state.page_info = nil
+        if ui.grid_view.filter_mode and not ui.command_mode then
+            app_state.status_message = "/" .. ui.grid_view.filter_buffer
         end
+
+        ui.prepared_grid = grid_mod.prepare(ui.last_result, ui.grid_view)
+        app_state.page_info = grid_mod.page_info(ui.grid_view, ui.prepared_grid)
 
         terminal.clear()
         local regions = layout.calculate(terminal, config)
         if not regions then draw.too_small(terminal, terminal); return end
         draw.sidebar(terminal, app_state, regions.sidebar, theme, terminal, ui.sidebar_state)
         draw.editor(terminal, editor, regions.editor, theme)
-        draw.grid(terminal, ui.last_result, regions.grid, theme, ui.grid_page, ui.grid_page_size)
-        draw.status(terminal, app_state, regions.status, theme, exec, ui.command_mode, app_state.focus)
-        if ui.show_help then
+        draw.grid(terminal, ui.prepared_grid, ui.grid_view, regions.grid, theme, app_state.focus == "grid")
+        draw.status(terminal, app_state, regions.status, theme, active_exec, ui.command_mode, app_state.focus)
+        if ui.grid_view.cell_modal then
+            draw.modal(terminal, "Cell value", { ui.grid_view.cell_modal }, regions.grid, theme, terminal)
+        elseif ui.show_help then
             local help_title = ui.help_title or "Help"
             local help_lines = ui.help_lines or keys_mod.HELP_LINES
             draw.modal(terminal, help_title, help_lines, regions.editor, theme, terminal)

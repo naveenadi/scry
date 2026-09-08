@@ -1,0 +1,48 @@
+-- src/ui/keys/help.lua — help keybinding table
+
+local M = {}
+
+M.HELP_LINES = {
+    "Keybindings:",
+    "",
+    "  Ctrl+r    Execute query",
+    "  Ctrl+c    Cancel query",
+    "  Ctrl+p    Previous history",
+    "  Ctrl+n    Next history",
+    "  Tab       Cycle focus (editor/grid/sidebar)",
+    "  Esc       Focus sidebar (from editor)",
+    "  ?         Toggle this help overlay",
+    "",
+    "  Editor:",
+    "  Arrow keys  Move cursor",
+    "  Home/End    Start/end of line",
+    "  Ctrl+a/e    Start/end of line",
+    "  Ctrl+k      Kill to end of line",
+    "  Ctrl+u      Kill to start of line",
+    "  Ctrl+l      Clear line",
+    "",
+    "  Grid:",
+    "  Ctrl+f/b    Next/previous page",
+    "  gg / G      First / last row",
+    "  j/k h/l     Move selection",
+    "  H / L       Scroll columns",
+    "  Enter       Sort header / open cell",
+    "  /           Filter rows",
+    "  Ctrl+e      Export CSV",
+    "  Shift+E     Export JSON",
+    "",
+    "  Sidebar:",
+    "  j/k         Navigate tables",
+    "  Enter        Select table (insert name)",
+    "",
+    "  Commands:",
+    "  :q / :quit   Quit",
+    "  :connect NAME Switch connection",
+    "  :help        Show commands",
+    "  :history     Show query history",
+    "  :reconnect   Reconnect after cancel",
+    "  :rollback    Issue ROLLBACK",
+    "  :dismiss     Dismiss reconnect prompt",
+}
+
+return M

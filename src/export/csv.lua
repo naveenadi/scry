@@ -42,6 +42,27 @@ function M.to_string(columns, rows)
     return table.concat(parts, "\n") .. "\n"
 end
 
+-- Stream rows to an open file handle. Returns write_row and finish (no-op for CSV).
+function M.open_writer(f, columns)
+    local header = {}
+    for i, name in ipairs(columns) do
+        header[i] = csv_escape(name)
+    end
+    f:write(table.concat(header, ",") .. "\n")
+
+    local function write_row(row)
+        local line = {}
+        for i = 1, #columns do
+            line[i] = csv_escape(row[i])
+        end
+        f:write(table.concat(line, ",") .. "\n")
+    end
+
+    local function finish() end
+
+    return write_row, finish
+end
+
 -- Export rows to CSV file.
 -- path: output file path
 -- columns: array of column name strings

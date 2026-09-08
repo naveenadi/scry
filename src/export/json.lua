@@ -51,6 +51,31 @@ function M.to_string(columns, rows)
     return "[" .. table.concat(parts, ",") .. "]"
 end
 
+-- Stream JSON array rows to an open file handle. Returns write_row, finish.
+function M.open_writer(f, columns)
+    f:write("[")
+    local first = true
+
+    local function write_row(row)
+        if first then
+            first = false
+        else
+            f:write(",")
+        end
+        local obj_parts = {}
+        for i, name in ipairs(columns) do
+            table.insert(obj_parts, '"' .. name:gsub('"', '\\"') .. '":' .. json_value(row[i]))
+        end
+        f:write("{" .. table.concat(obj_parts, ",") .. "}")
+    end
+
+    local function finish()
+        f:write("]")
+    end
+
+    return write_row, finish
+end
+
 -- Export rows to JSON file.
 -- path: output file path
 -- columns: array of column name strings

@@ -20,6 +20,38 @@ MACOSX_DEPLOYMENT_TARGET ?= 10.15
 SQLITE_CFLAGS = $(shell pkg-config --cflags sqlite3 2>/dev/null)
 SQLITE_LIBS   = $(shell pkg-config --libs sqlite3 2>/dev/null || printf '%s' '-lsqlite3')
 
+ifeq ($(OS),Windows_NT)
+  DRIVER_OBJS =
+  DRIVER_LIBS =
+  CPPFLAGS += -DSCRY_SQLITE_ONLY
+else
+  PQ_CFLAGS = $(shell pkg-config --cflags libpq 2>/dev/null)
+  PQ_LIBS   = $(shell pkg-config --libs libpq 2>/dev/null)
+  MYSQL_CFLAGS = $(shell pkg-config --cflags libmariadb 2>/dev/null || pkg-config --cflags mysqlclient 2>/dev/null)
+  MYSQL_LIBS   = $(shell pkg-config --libs libmariadb 2>/dev/null || pkg-config --libs mysqlclient 2>/dev/null)
+  DRIVER_OBJS =
+  DRIVER_LIBS =
+  ifneq ($(PQ_LIBS),)
+    DRIVER_OBJS += src/ls_postgres.o
+    DRIVER_LIBS += $(PQ_LIBS)
+  else
+    CPPFLAGS += -DSCRY_NO_POSTGRES
+  endif
+  ifneq ($(MYSQL_LIBS),)
+    DRIVER_OBJS += src/ls_mysql.o
+    DRIVER_LIBS += $(MYSQL_LIBS)
+  else
+    CPPFLAGS += -DSCRY_NO_MYSQL
+  endif
+  ifneq ($(PQ_LIBS)$(MYSQL_LIBS),)
+    # At least one remote driver linked.
+  else
+    CPPFLAGS += -DSCRY_SQLITE_ONLY
+  endif
+endif
+
+LUASQL_CFLAGS = -fPIC -I$(LUAJIT_INC) -I$(LUASQL_DIR) -DLUASQL_VERSION_NUMBER=\"$(LUASQL_VERSION)\"
+
 UNAME_S := $(shell uname -s 2>/dev/null)
 ifeq ($(UNAME_S),Darwin)
   TERMBOX_LIB = libtermbox2.dylib
@@ -59,23 +91,33 @@ $(LUAJIT_LIB): $(VENDOR_STAMP)
 # provides it already, so compile a patched copy without changing vendor/.
 LUASQL_VERSION = 2.8.1
 LUASQL_PATCHED = build/luasql.c
-$(LUASQL_PATCHED): $(LUASQL_DIR)/luasql.c $(VENDOR_STAMP)
+$(LUASQL_PATCHED): $(VENDOR_STAMP)
 	@mkdir -p build
-	@python3 -c "import re; p=open('$<').read(); p,n=re.subn(r'#if !defined LUA_VERSION_NUM \\|\\| LUA_VERSION_NUM==501.*?#endif', '/* luaL_setfuncs is provided by LuaJIT 2.1 */', p, count=1, flags=re.S); assert n == 1; open('$@','w').write(p)"
+	@python3 -c "import re; p=open('$(LUASQL_DIR)/luasql.c').read(); p,n=re.subn(r'#if !defined LUA_VERSION_NUM \\|\\| LUA_VERSION_NUM==501.*?#endif', '/* luaL_setfuncs is provided by LuaJIT 2.1 */', p, count=1, flags=re.S); assert n == 1; open('$@','w').write(p)"
 
 src/luasql.o: $(LUASQL_PATCHED) $(VENDOR_STAMP)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -I$(LUAJIT_INC) -I$(LUASQL_DIR) $(SQLITE_CFLAGS) -DLUASQL_VERSION_NUMBER=\"$(LUASQL_VERSION)\" -c $(LUASQL_PATCHED) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LUASQL_CFLAGS) $(SQLITE_CFLAGS) -c $(LUASQL_PATCHED) -o $@
 
-src/ls_sqlite3.o: $(LUASQL_DIR)/ls_sqlite3.c $(VENDOR_STAMP)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -I$(LUAJIT_INC) -I$(LUASQL_DIR) $(SQLITE_CFLAGS) -c $< -o $@
+src/ls_sqlite3.o: $(VENDOR_STAMP)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LUASQL_CFLAGS) $(SQLITE_CFLAGS) -c $(LUASQL_DIR)/ls_sqlite3.c -o $@
+
+ifneq ($(PQ_LIBS),)
+src/ls_postgres.o: $(VENDOR_STAMP)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LUASQL_CFLAGS) $(PQ_CFLAGS) -c $(LUASQL_DIR)/ls_postgres.c -o $@
+endif
+
+ifneq ($(MYSQL_LIBS),)
+src/ls_mysql.o: $(VENDOR_STAMP)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LUASQL_CFLAGS) $(MYSQL_CFLAGS) -c $(LUASQL_DIR)/ls_mysql.c -o $@
+endif
 
 $(TERMBOX_LIB): $(TERMBOX_H) $(VENDOR_STAMP)
 	@printf '%s\n' '#define TB_IMPL' '#define TB_OPT_TRUECOLOR' '#include "termbox2.h"' > build/termbox2_impl.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC $(TERMBOX_BUILD_FLAGS) -Ivendor build/termbox2_impl.c -o $@
 
-scry: src/main.c src/luasql.o src/ls_sqlite3.o $(LUAJIT_LIB) $(TERMBOX_LIB) build/SOURCES.txt
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ -I$(LUAJIT_INC) src/main.c src/luasql.o src/ls_sqlite3.o \
-	  $(LUAJIT_LIB) $(SQLITE_LIBS) -lm $(TERMBOX_RUNTIME_FLAGS)
+scry: src/main.c src/luasql.o src/ls_sqlite3.o $(DRIVER_OBJS) $(LUAJIT_LIB) $(TERMBOX_LIB) build/SOURCES.txt
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ -I$(LUAJIT_INC) src/main.c src/luasql.o src/ls_sqlite3.o $(DRIVER_OBJS) \
+	  $(LUAJIT_LIB) $(SQLITE_LIBS) $(DRIVER_LIBS) -lm $(TERMBOX_RUNTIME_FLAGS)
 
 build/SOURCES.txt: Makefile $(VENDOR_STAMP)
 	@mkdir -p build
@@ -116,7 +158,7 @@ sources: build/SOURCES.txt
 debug: clean
 	$(MAKE) CFLAGS='-O0 -g' scry
 
-release: clean
+release: clean vendor
 	$(MAKE) CFLAGS='-O2' scry
 
 test: scry $(LUAJIT_BIN)

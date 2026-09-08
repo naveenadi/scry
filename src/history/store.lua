@@ -5,67 +5,9 @@
 -- Oldest entries pruned when count exceeds history_limit.
 -- Entries over history_max_entry_bytes truncated/flagged, not silently dropped.
 
+local json = require("src.utils.json")
+
 local M = {}
-
--- Minimal JSON encoder (no external dependency).
--- Handles: string, number, boolean, nil, table (array or object).
-local function json_encode(val)
-    local t = type(val)
-    if val == nil then return "null" end
-    if t == "boolean" then return val and "true" or "false" end
-    if t == "number" then return tostring(val) end
-    if t == "string" then
-        -- Escape special characters
-        local s = val:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
-        return '"' .. s .. '"'
-    end
-    if t == "table" then
-        -- Check if array (sequential integer keys)
-        local is_array = true
-        local max_i = 0
-        for k, _ in pairs(val) do
-            if type(k) ~= "number" or k ~= math.floor(k) or k < 1 then
-                is_array = false
-                break
-            end
-            if k > max_i then max_i = k end
-        end
-        if is_array and max_i == #val then
-            local parts = {}
-            for i = 1, #val do
-                parts[i] = json_encode(val[i])
-            end
-            return "[" .. table.concat(parts, ",") .. "]"
-        else
-            local parts = {}
-            for k, v in pairs(val) do
-                if type(k) == "string" then
-                    table.insert(parts, json_encode(k) .. ":" .. json_encode(v))
-                end
-            end
-            return "{" .. table.concat(parts, ",") .. "}"
-        end
-    end
-    return "null"
-end
-
--- Minimal JSON decoder (handles the subset we write).
-local function json_decode(str)
-    if not str or str == "" then return nil end
-    local ok, result = pcall(function()
-        -- Transform JSON to Lua table literal:
-        --   {"key":value} → {["key"]=value}
-        --   null → nil, true/false/numbers/strings as-is
-        local lua_str = str
-            :gsub("null", "nil")
-            :gsub('"([^"]+)":', '["%1"]=')  -- quote keys
-        local fn = load("return " .. lua_str)
-        if fn then return fn() end
-        return nil
-    end)
-    if ok then return result end
-    return nil
-end
 
 -- Create a new history store.
 -- platform: platform module (must have history_path())
@@ -94,7 +36,7 @@ function M.new(platform, opts)
         if not f then return end
         for line in f:lines() do
             if line ~= "" then
-                local entry = json_decode(line)
+                local entry = json.decode(line)
                 if entry and entry.sql then
                     table.insert(self._entries, entry)
                 end
@@ -189,7 +131,7 @@ function M.new(platform, opts)
         if not f then return end
         -- Write oldest first (reverse of in-memory newest-first order)
         for i = #self._entries, 1, -1 do
-            f:write(json_encode(self._entries[i]) .. "\n")
+            f:write(json.encode(self._entries[i]) .. "\n")
         end
         f:close()
     end

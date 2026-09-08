@@ -1,44 +1,14 @@
 -- src/ui/keys.lua — keyboard dispatch for the TUI
+-- Delegates command mode to keys/command.lua, help text to keys/help.lua.
 
-local commands = require("src.ui.commands")
+local help_mod = require("src.ui.keys.help")
+local command_mod = require("src.ui.keys.command")
+local export_stream = require("src.export.stream")
+local grid_mod = require("src.ui.grid")
 
 local M = {}
 
--- Help keybinding table
-M.HELP_LINES = {
-    "Keybindings:",
-    "",
-    "  Ctrl+r    Execute query",
-    "  Ctrl+c    Cancel query",
-    "  Ctrl+p    Previous history",
-    "  Ctrl+n    Next history",
-    "  Tab       Cycle focus (editor/grid/sidebar)",
-    "  Esc       Focus sidebar (from editor)",
-    "  ?         Toggle this help overlay",
-    "",
-    "  Editor:",
-    "  Arrow keys  Move cursor",
-    "  Home/End    Start/end of line",
-    "  Ctrl+a/e    Start/end of line",
-    "  Ctrl+k      Kill to end of line",
-    "  Ctrl+u      Kill to start of line",
-    "  Ctrl+l      Clear line",
-    "",
-    "  Grid:",
-    "  Ctrl+f/b    Next/previous page",
-    "",
-    "  Sidebar:",
-    "  j/k         Navigate tables",
-    "  Enter        Select table (insert name)",
-    "",
-    "  Commands:",
-    "  :q / :quit   Quit",
-    "  :connect NAME Switch connection",
-    "  :help        Show commands",
-    "  :history     Show query history",
-    "  :reconnect   Reconnect after cancel",
-    "  :dismiss     Dismiss reconnect prompt",
-}
+M.HELP_LINES = help_mod.HELP_LINES
 
 function M.new(ctx)
     local terminal = ctx.terminal
@@ -48,94 +18,6 @@ function M.new(ctx)
         return event.key == expected or event.ch == expected
     end
 
-    local function finish_command()
-        ui.command_mode = false
-        ui.command_buffer = ""
-    end
-
-    local function run_command(text)
-        local command, argument = commands.parse(text)
-        if command == "quit" then
-            ctx.loop:stop()
-        elseif command == "connect" then
-            if argument and argument ~= "" then
-                local conn_config = ctx.config.connections[argument]
-                if conn_config then
-                    ctx.adapter:close()
-                    local new_adapter
-                    if conn_config.type == "sqlite" then
-                        new_adapter = require("src.db.sqlite").new()
-                    elseif conn_config.type == "postgres" then
-                        new_adapter = require("src.db.postgres").new()
-                    elseif conn_config.type == "mysql" then
-                        new_adapter = require("src.db.mysql").new()
-                    else
-                        ctx.state.status_message = "Unsupported type: " .. (conn_config.type or "nil")
-                        finish_command()
-                        return
-                    end
-                    local ok, err = new_adapter:connect(conn_config)
-                    if ok then
-                        ctx.adapter = new_adapter
-                        ctx.connection_config = conn_config
-                        ctx.state.connection_name = argument
-                        ctx.state.connection_status = "connected"
-                        ctx.state.tables = new_adapter:list_tables()
-                        ctx.state.status_message = "Connected to " .. argument
-                        -- Rebuild execution with new adapter
-                        ctx.execution = require("src.core.execution").new(
-                            new_adapter, ctx.config, ctx.read_only)
-                        ctx.state.status_message = "Connected to " .. argument
-                    else
-                        ctx.state.status_message = "Connect failed: " .. (err or "?")
-                    end
-                else
-                    ctx.state.status_message = "Unknown connection: " .. argument
-                end
-            else
-                ctx.state.status_message = "Usage: :connect NAME"
-            end
-        elseif command == "reconnect" then
-            if ctx.execution.state == ctx.execution.RECONNECT_CONFIRM
-                and ctx.execution:confirm_reconnect() then
-                local ok, err = ctx.adapter:connect(ctx.connection_config)
-                if ok then
-                    ctx.state.connection_status = "connected"
-                    ctx.state.status_message = "Reconnected"
-                else
-                    ctx.state.status_message = "Reconnect failed: " .. (err or "?")
-                end
-            else
-                ctx.state.status_message = "Nothing to reconnect"
-            end
-        elseif command == "dismiss" then
-            if ctx.execution.state == ctx.execution.RECONNECT_CONFIRM then
-                ctx.execution:confirm_reconnect()
-                ctx.state.status_message = "Continuing on abandoned connection"
-            else
-                ctx.state.status_message = "Nothing to dismiss"
-            end
-        elseif command == "help" then
-            ui.show_help = true
-        elseif command == "history" then
-            local sql_list = ctx.history:sql_list()
-            if #sql_list == 0 then
-                ctx.state.status_message = "No history"
-            else
-                local lines = {}
-                for i = 1, math.min(20, #sql_list) do
-                    lines[i] = sql_list[i]
-                end
-                ui.help_lines = lines
-                ui.help_title = "History (last " .. #lines .. ")"
-                ui.show_help = true
-            end
-        else
-            ctx.state.status_message = "Unknown command: :" .. (argument or "")
-        end
-        finish_command()
-    end
-
     return function(event)
         local key, ch = event.key, event.char
         local enter = pressed(event, terminal.KEY_ENTER)
@@ -143,12 +25,14 @@ function M.new(ctx)
         local backspace = pressed(event, terminal.KEY_BACKSPACE)
             or key == terminal.KEY_BACKSPACE2 or event.ch == 0x7f
 
+        -- Command mode: delegate to command handler
         if ui.command_mode then
             if escape then
-                finish_command()
+                ui.command_mode = false
+                ui.command_buffer = ""
                 ctx.state.status_message = ""
             elseif enter then
-                run_command(ui.command_buffer)
+                command_mod.run(ctx, ui, ui.command_buffer)
             elseif backspace then
                 ui.command_buffer = ui.command_buffer:sub(1, -2)
             elseif event.type == "char" and ch then
@@ -159,12 +43,33 @@ function M.new(ctx)
             return
         end
 
-        -- Help overlay: any key dismisses it
-        if ui.show_help then
+        -- Help overlay / cell modal: any key dismisses
+        if ui.show_help or ui.grid_view.cell_modal then
             ui.show_help = false
+            ui.grid_view.cell_modal = nil
             return
         end
 
+        -- Grid filter mode
+        if ui.grid_view.filter_mode then
+            if escape then
+                ui.grid_view.filter_mode = false
+                ui.grid_view.filter_buffer = ""
+            elseif enter then
+                ui.grid_view.filter = ui.grid_view.filter_buffer
+                ui.grid_view.filter_mode = false
+                ui.grid_view.filter_buffer = ""
+                ui.grid_view.page = 1
+                ui.grid_view.select_row = 1
+            elseif backspace then
+                ui.grid_view.filter_buffer = ui.grid_view.filter_buffer:sub(1, -2)
+            elseif event.type == "char" and ch then
+                ui.grid_view.filter_buffer = ui.grid_view.filter_buffer .. string.char(ch)
+            end
+            return
+        end
+
+        -- Enter command mode
         if ctx.state.focus == "editor"
             and ((event.type == "char" and ch == ":") or escape) then
             ui.command_mode = true
@@ -173,6 +78,7 @@ function M.new(ctx)
             return
         end
 
+        -- Global keys
         if pressed(event, terminal.KEY_CTRL_R) then
             local text = ctx.editor:get_text()
             if text and text:match("%S") then
@@ -180,7 +86,7 @@ function M.new(ctx)
                 ui.result_consumed = false
                 ctx.execution:execute(text)
                 ctx.state.status_message = "Running..."
-                ui.grid_page = 1
+                grid_mod.reset(ui.grid_view)
             end
             return
         end
@@ -195,38 +101,36 @@ function M.new(ctx)
             return
         end
 
-        -- Export: Ctrl+e = CSV, Ctrl+Shift+E = JSON
-        if pressed(event, terminal.KEY_CTRL_E) and ctx.state.focus ~= "editor" then
-            if not ui.last_result or not ui.last_result.columns then
-                ctx.state.status_message = "No results to export"
+        local function export_result(format, label, ext)
+            if ctx.execution:is_running() then
+                ctx.state.status_message = "Cannot export while query is running"
                 return
             end
-            local csv_mod = require("src.export.csv")
-            local path = os.tmpname() .. ".csv"
-            local ok, err = csv_mod.to_file(path, ui.last_result.columns, ui.last_result.rows or {})
-            if ok then
-                ctx.state.status_message = "Exported CSV: " .. path
-            else
-                ctx.state.status_message = "Export failed: " .. (err or "?")
+            local sql, err = export_stream.eligible_sql(ctx.execution:get_metadata())
+            if not sql then
+                ctx.state.status_message = err or "No results to export"
+                return
             end
+            local path = os.tmpname() .. ext
+            local ok, info = export_stream.to_file(ctx.adapter, sql, format, path)
+            if ok then
+                ctx.state.status_message = string.format("Exported %s (%d rows): %s", label, info, path)
+            else
+                ctx.state.status_message = "Export failed: " .. (info or "?")
+            end
+        end
+
+        -- Export: Ctrl+e = CSV, Ctrl+Shift+E = JSON (streams full result via adapter)
+        if pressed(event, terminal.KEY_CTRL_E) and ctx.state.focus ~= "editor" then
+            export_result("csv", "CSV", ".csv")
             return
         end
         if event.type == "char" and event.ch == string.byte("E") then
-            if not ui.last_result or not ui.last_result.columns then
-                ctx.state.status_message = "No results to export"
-                return
-            end
-            local json_mod = require("src.export.json")
-            local path = os.tmpname() .. ".json"
-            local ok, err = json_mod.to_file(path, ui.last_result.columns, ui.last_result.rows or {})
-            if ok then
-                ctx.state.status_message = "Exported JSON: " .. path
-            else
-                ctx.state.status_message = "Export failed: " .. (err or "?")
-            end
+            export_result("json", "JSON", ".json")
             return
         end
 
+        -- History navigation
         if pressed(event, terminal.KEY_CTRL_P) then
             local sql_list = ctx.history:sql_list()
             if ui.history_index < #sql_list then
@@ -248,13 +152,19 @@ function M.new(ctx)
             return
         end
 
+        -- Focus cycling
         if pressed(event, terminal.KEY_TAB) then
-            ctx.state.focus = ctx.state.focus == "editor" and "grid"
-                or ctx.state.focus == "grid" and "sidebar" or "editor"
+            if ctx.state.focus == "editor" then
+                ctx.state.focus = "grid"
+            elseif ctx.state.focus == "grid" then
+                ctx.state.focus = "sidebar"
+            else
+                ctx.state.focus = "editor"
+            end
             return
         end
 
-        -- Help overlay toggle
+        -- Help toggle
         if event.ch == string.byte("?") then
             ui.show_help = not ui.show_help
             return
@@ -285,12 +195,12 @@ function M.new(ctx)
                     ctx.state.status_message = "Inserted: " .. name
                 end
             elseif event.ch == string.byte("c") then
-                -- 'c' in sidebar to switch connection
                 ctx.state.status_message = "Use :connect NAME to switch"
             end
             return
         end
 
+        -- Editor input
         if ctx.state.focus == "editor" then
             local editor = ctx.editor
             if pressed(event, terminal.KEY_ARROW_UP) then editor:move_up()
@@ -311,13 +221,82 @@ function M.new(ctx)
             return
         end
 
+        -- Grid interaction
         if ctx.state.focus == "grid" then
+            local view = ui.grid_view
+            local prepared = grid_mod.prepare(ui.last_result, view)
+            if not prepared then return end
+
             if pressed(event, terminal.KEY_CTRL_F) then
-                local rows = ui.last_result and #ui.last_result.rows or 0
-                local pages = math.ceil(rows / ui.grid_page_size)
-                if ui.grid_page < pages then ui.grid_page = ui.grid_page + 1 end
-            elseif pressed(event, terminal.KEY_CTRL_B) and ui.grid_page > 1 then
-                ui.grid_page = ui.grid_page - 1
+                if view.page < prepared.total_pages then view.page = view.page + 1 end
+                return
+            elseif pressed(event, terminal.KEY_CTRL_B) and view.page > 1 then
+                view.page = view.page - 1
+                return
+            end
+
+            if event.ch == string.byte("/") then
+                view.filter_mode = true
+                view.filter_buffer = view.filter
+                return
+            end
+
+            if event.ch == string.byte("g") then
+                if view.pending_g then
+                    grid_mod.go_first(view)
+                    view.pending_g = false
+                else
+                    view.pending_g = true
+                end
+                return
+            end
+            if event.ch == string.byte("G") then
+                grid_mod.go_last(view, prepared.total_rows, view.page_size)
+                view.pending_g = false
+                return
+            end
+            view.pending_g = false
+
+            if event.ch == string.byte("H") then
+                view.col_offset = math.max(0, view.col_offset - 1)
+                return
+            elseif event.ch == string.byte("L") then
+                if view.col_offset < #prepared.columns - 1 then
+                    view.col_offset = view.col_offset + 1
+                end
+                return
+            elseif event.ch == string.byte("h") then
+                if view.select_col > 1 then view.select_col = view.select_col - 1 end
+                return
+            elseif event.ch == string.byte("l") then
+                if view.select_col < #prepared.columns then view.select_col = view.select_col + 1 end
+                return
+            elseif event.ch == string.byte("j") or pressed(event, terminal.KEY_ARROW_DOWN) then
+                if view.select_row < prepared.total_rows then
+                    view.select_row = view.select_row + 1
+                    if view.select_row > 0 then
+                        local page = math.ceil(view.select_row / view.page_size)
+                        if page > view.page then view.page = page end
+                    end
+                end
+                return
+            elseif event.ch == string.byte("k") or pressed(event, terminal.KEY_ARROW_UP) then
+                if view.select_row > 0 then
+                    view.select_row = view.select_row - 1
+                    if view.select_row > 0 then
+                        local page = math.ceil(view.select_row / view.page_size)
+                        if page < view.page then view.page = page end
+                    end
+                end
+                return
+            elseif enter then
+                if view.select_row == 0 then
+                    grid_mod.toggle_sort(view, view.select_col)
+                elseif prepared.all_rows[view.select_row] then
+                    local row = prepared.all_rows[view.select_row]
+                    view.cell_modal = grid_mod.format_cell(row[view.select_col])
+                end
+                return
             end
         end
     end

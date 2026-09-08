@@ -15,6 +15,8 @@ function M.parse(text)
         return "help"
     elseif command == "history" then
         return "history"
+    elseif command == "rollback" then
+        return "rollback"
     elseif command:match("^connect%s+(.+)$") then
         local name = command:match("^connect%s+(.+)$")
         return "connect", name
