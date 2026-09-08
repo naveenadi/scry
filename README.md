@@ -103,15 +103,21 @@ Enable via config (`read_only = true`) or CLI flag (`--read-only`). Blocks `INSE
 
 | Key | Action |
 |-----|--------|
-| `Ctrl+f` | Next page |
-| `Ctrl+b` | Previous page |
+| `Ctrl+f` / `Ctrl+b` | Next / previous page |
+| `gg` / `G` | First / last row |
+| `j` / `k` | Move selection down / up |
+| `h` / `l` | Scroll columns left / right | `/` | Filter rows |
+| `Enter` | Sort by column / open cell |
+| `Ctrl+e` | Export result as CSV |
+| `Shift+E` | Export result as JSON |
 
 ### Sidebar
 
 | Key | Action |
 |-----|--------|
-| `j`/`k` | Navigate tables |
+| `j` / `k` | Navigate tables |
 | `Enter` | Select table (insert name into editor) |
+| `Esc` | Close sidebar |
 
 ### Commands
 
@@ -122,6 +128,7 @@ Enable via config (`read_only = true`) or CLI flag (`--read-only`). Blocks `INSE
 | `:help` | Show help overlay |
 | `:history` | Show query history |
 | `:reconnect` | Reconnect after cancel |
+| `:rollback` | Issue `ROLLBACK` |
 | `:dismiss` | Dismiss reconnect prompt |
 
 ## Supported databases
@@ -138,7 +145,7 @@ Enable via config (`read_only = true`) or CLI flag (`--read-only`). Blocks `INSE
 make test    # run all tests
 ```
 
-Tests include: SQL parser (48 tests), config merge (9 tests), UI commands (3 tests), UI draw (1 test), UI layout (3 tests), execution engine (10 tests).
+Tests cover SQL parsing, config merge, editor/input, UI (commands, draw, grid, layout), query execution, database adapters, export (CSV, JSON, stream), SSH tunnel lifecycle, query history, and read-only enforcement.
 
 ## Project structure
 
@@ -146,38 +153,77 @@ Tests include: SQL parser (48 tests), config merge (9 tests), UI commands (3 tes
 src/
   app.lua              # application wiring
   cli.lua              # CLI argument parsing
-  core/
-    event_loop.lua     # main event loop
-    execution.lua      # multi-statement execution engine
-  db/
-    adapter.lua        # adapter contract definition
-    sqlite.lua         # SQLite adapter
-    postgres.lua       # PostgreSQL adapter
-    mysql.lua          # MySQL/MariaDB adapter
-  sql/
-    parse.lua          # SQL parser (split + classify + highlight)
-  ui/
-    commands.lua       # command-mode parser
-    draw.lua           # renderers (editor, grid, sidebar, status, modal)
-    editor.lua         # text editor component
-    keys.lua           # keyboard dispatch
-    layout.lua         # layout calculation
   config/
     loader.lua         # config file loading
     merge.lua          # deep-merge semantics
     defaults.lua       # default config values
-  tui/
-    terminal.lua       # termbox2 FFI wrapper
+  core/
+    event_loop.lua     # main event loop
+    execution.lua      # multi-statement execution engine
+    statement_cycle.lua  # statement scheduling
+  db/
+    adapter.lua        # adapter contract definition
+    base.lua           # shared adapter base
+    factory.lua        # adapter construction
+    sqlite.lua         # SQLite adapter
+    postgres.lua       # PostgreSQL adapter (libpq)
+    mysql.lua          # MySQL/MariaDB adapter
+  export/
+    csv.lua            # CSV (RFC 4180) export
+    json.lua           # JSON export
+    stream.lua         # result-to-stream helpers
+  history/
+    store.lua          # query history persistence
   platform/
+    init.lua           # platform module entry
     unix.lua           # Unix platform layer
     windows.lua        # Windows platform layer
+  sql/
+    parse.lua          # SQL parser (split + classify + highlight)
+  ssh/
+    tunnel.lua         # SSH tunnel lifecycle
+  tui/
+    terminal.lua       # termbox2 FFI wrapper
+  ui/
+    commands.lua       # command-mode parser
+    draw.lua           # TUI renderers
+    draw/
+      editor.lua       # editor renderer
+      grid.lua         # results grid renderer
+      modal.lua        # modal renderer
+      sidebar.lua      # sidebar renderer
+      status.lua       # status bar renderer
+    editor.lua         # text editor component
+    grid.lua           # results grid controller
+    keys.lua           # keyboard dispatch
+    keys/
+      command.lua      # command-mode key handling
+      help.lua         # help overlay text
+    layout.lua         # layout calculation
   utils/
     syntax.lua         # syntax highlighting tokenizer
+    json.lua           # JSON helpers
+main.c                 # C entry point
+```
+
+```
 tests/
-  sql/                 # parser unit tests
   config/              # config merge tests
+  core/                # statement cycle tests
+  db/                  # adapter base tests
+  export/              # CSV, JSON, stream tests
+  history/             # history store tests
+  integration/         # execution engine + SQLite tests
+  readonly/            # read-only enforcement tests
+  sql/                 # parser unit tests
+  ssh/                 # tunnel unit tests
   ui/                  # UI component tests
-  integration/         # execution engine tests
+  editor_test.lua      # editor unit tests
+  utils_json_test.lua  # JSON helper tests
+  utils_syntax_test.lua  # syntax tokenizer tests
+```
+
+```
 docs/
   adr/                 # architectural decision records
   research/            # research findings
