@@ -1,0 +1,167 @@
+src/db/postgres.lua
+  s_a1c4634d9a5807::t_20d67d69f26f62 2-4,9,12-13,17,19-33,36-42,44-48,50-53,56-58,60-65,67-68,70-72,76-81,83,87-89,91-94,97,99-102,105,107,110-113,116-120,122-127,129-139,142,145-146,148-149,151,154-155,157-158,160,167-170,172,174,176-183
+  s_a1c4634d9a5807::t_4b7776f581758c 16
+  s_11e8cc9d9a45f0::t_37ac80f6d8d2e4 150,152-153,159,161-166,171,173
+src/db/mysql.lua
+  s_11e8cc9d9a45f0::t_f03df4a0ff4585 135-138,144-147,152,154
+  s_a1c4634d9a5807::t_33675b64436aa8 2-3,9,12-13,21-24,26-40,43-48,51-55,57-61,64-67,69-70,72-73,75-76,78,82-83,85-88,91-92,94-95,98-100,102-105,108,110-113,116-118,121-124,127-131,133-134,139,141-143,148-151,153,155,157-164
+src/ui/draw/status.lua
+  s_a1c4634d9a5807::t_f1b169f36157fd 1-22
+tests/ui/grid_test.lua
+  s_b4c55fa120e5f8::t_51a37bb5c95dc4 1-39
+Makefile
+  s_b4c55fa120e5f8::t_b2c284d9f5d7a5 161
+  s_b4c55fa120e5f8::t_fb5cabd184f4bf 94,96,99,101-103,105-106,108,110-111
+  s_b4c55fa120e5f8::t_b50bcf064262d3 118-120
+  s_b4c55fa120e5f8::t_9473f421bcf0ba 104,107,109,112
+  s_b4c55fa120e5f8::t_d529916d2170ad 23-28,30,51-54
+  s_b4c55fa120e5f8::t_5d87cf703d5159 29,31-50
+src/db/base.lua
+  s_11e8cc9d9a45f0::t_f593905c66fe73 140-160
+  s_a1c4634d9a5807::t_d512393ab2bf59 1-139,161-202
+tests/db/base_fetch_test.lua
+  s_11e8cc9d9a45f0::t_f75e51046e7a5c 1-46
+src/ui/draw/sidebar.lua
+  s_a1c4634d9a5807::t_12c7a7669df9a0 1-35
+src/db/sqlite.lua
+  s_a1c4634d9a5807::t_b3bfaf707a556c 13,80-81
+  s_11e8cc9d9a45f0::t_836601938bb6dc 88-90,97-100,105,107
+  s_a1c4634d9a5807::t_7b198e4a5b0532 2-3,6,9-10,14,16-26,29-34,37-41,43-46,49-51,53-54,56,58-59,62-66,68-71,73-77,82-84,86-87,91-92,94-96,101-104,106,108,110-117
+src/ui/keys/help.lua
+  s_b4c55fa120e5f8::t_1a9beb2b817704 26-32
+  s_a1c4634d9a5807::t_3e43c2502b8250 1-25,33-43,45-48
+  s_b4c55fa120e5f8::t_424a347f6278f3 44
+src/app.lua
+  s_a1c4634d9a5807::t_04970ee127b2e2 12,77-78,80
+  s_11e8cc9d9a45f0::t_23a63c4fcbe222 125-130,132,147
+  s_def6ec3868c4b3::t_1324cb272e5e91 161-173
+  s_b4c55fa120e5f8::t_a14ec7512137be 198,200-202
+  s_b4c55fa120e5f8::t_f0edc4b6c89837 14
+  s_11e8cc9d9a45f0::t_3bccfe9d1ab229 152,154,156,182
+  s_b4c55fa120e5f8::t_a494151255a597 157-158,160,174-175
+  s_b4c55fa120e5f8::t_f48e33c1495751 186-187,190-191
+  s_b4c55fa120e5f8::t_043f583e46d05f 106,108
+  s_11e8cc9d9a45f0::t_d6efb08ad8cdd7 199
+  s_b4c55fa120e5f8::t_1335b930f24eea 192
+src/main.c
+  s_b4c55fa120e5f8::t_95f815e8e69551 14-15,17-18,20
+  s_b4c55fa120e5f8::t_d82e2e2bd58471 29,32-33,36
+  s_b4c55fa120e5f8::t_3efda27c10b0b1 2,4,16,19,21,23,28,30-31,34-35,37,48,77
+src/history/store.lua
+  s_11e8cc9d9a45f0::t_2c005814230b8d 39
+  s_11e8cc9d9a45f0::t_080354c957c82a 134
+  s_a1c4634d9a5807::t_1a76cbb96e724a 8
+src/export/stream.lua
+  s_def6ec3868c4b3::t_d5805142cd2060 107,109-116
+  s_11e8cc9d9a45f0::t_19a86131f2bfab 1-40,44-61,63-73,78-106,108,117-124
+  s_11e8cc9d9a45f0::t_b212f549a70375 74-77
+  s_11e8cc9d9a45f0::t_99483dc0df0a6d 41-43
+  s_11e8cc9d9a45f0::t_a6f403fe95ad87 62
+src/ui/draw/grid.lua
+  s_a1c4634d9a5807::t_331de3b88cb5f9 1-2,5,14,20,28,30-31,39,44,48,57,62-63,67,69,73,90,107-110
+  s_b4c55fa120e5f8::t_4c99c9481a9e0a 3-4,6-13,15-19,21-27,29,32-38,40-43,45,49,53,56,58-61,64,66,68,70-72,91-106
+  s_b4c55fa120e5f8::t_35961dca59cde1 46-47,50-52,54-55,65
+  s_b4c55fa120e5f8::t_18f189d510fe05 74-89
+src/ui/commands.lua
+  s_b4c55fa120e5f8::t_94a76603cc5510 18-19
+src/utils/json.lua
+  s_11e8cc9d9a45f0::t_7ff449c2c535d0 1,5-45
+  s_11e8cc9d9a45f0::t_7d58a78897d10b 95
+  s_11e8cc9d9a45f0::t_5dda4318f1994c 96-98
+  s_a1c4634d9a5807::t_6a20b632f4dd8a 2-4,46-94,99-166
+src/ui/draw/modal.lua
+  s_a1c4634d9a5807::t_e3d7a49f9ee25b 1-42
+src/export/csv.lua
+  s_11e8cc9d9a45f0::t_70b999cfd3c349 46-65
+  s_b4c55fa120e5f8::t_87ddf2bc024872 45
+src/ui/draw.lua
+  s_a1c4634d9a5807::t_022c046ed65d46 11-15
+  s_a1c4634d9a5807::t_872ad5218839d1 1,3-7
+tests/core/statement_cycle_test.lua
+  s_11e8cc9d9a45f0::t_5b650b22ff97fc 1-86
+tests/export/stream_test.lua
+  s_11e8cc9d9a45f0::t_c86510d1c6fe65 1-100
+src/ui/grid.lua
+  s_b4c55fa120e5f8::t_ac570868a9de0c 1-152
+src/core/execution.lua
+  s_b4c55fa120e5f8::t_b93ae909758fd0 190
+  s_b4c55fa120e5f8::t_54d33a0d0cb89b 235
+  s_11e8cc9d9a45f0::t_3306c15023c423 6,12-24,41,44,62-106,108-118,130,146-149,151-161,163-168,170-171,173-175,177,179-181,183-187,191-192,194,196-201,203,205-209,217,267
+  s_b4c55fa120e5f8::t_0ff93b66bf4b61 52
+  s_b4c55fa120e5f8::t_1b9d3f9d4484a4 135
+  s_b4c55fa120e5f8::t_2a04163333ac6e 107
+  s_b4c55fa120e5f8::t_31d1ff8b3ee92b 188
+src/db/factory.lua
+  s_a1c4634d9a5807::t_79221006fe0e95 1-42
+tests/utils_json_test.lua
+  s_a1c4634d9a5807::t_e250c5cfc29033 1-29,51
+  s_11e8cc9d9a45f0::t_e9689a089992d9 30-50
+src/core/statement_cycle.lua
+  s_b4c55fa120e5f8::t_ff19fbe625be6e 24
+  s_b4c55fa120e5f8::t_23da56adf9e6fd 55,57-64
+  s_def6ec3868c4b3::t_b8611b8b54286c 113-114,128,135
+  s_11e8cc9d9a45f0::t_2866e6d6ade6b9 23,27,30,33-40,52-54,56,65-67,96,136,152,157,169
+  s_b4c55fa120e5f8::t_bf14309bb88a62 31
+  s_11e8cc9d9a45f0::t_be2c0a7a9b2ac9 1-22,25-26,28-29,32,41-51,68-95,97-110,134,137-151,153-156,158-168
+  s_b4c55fa120e5f8::t_78e4abe4024ec1 112,130,132-133
+  s_def6ec3868c4b3::t_95a76763eb4357 111,115-127,129,131
+src/ui/draw/editor.lua
+  s_a1c4634d9a5807::t_e9cad896f296ca 1-35
+src/ui/keys.lua
+  s_b4c55fa120e5f8::t_4f8d33f4d0237c 7
+  s_11e8cc9d9a45f0::t_92c0dd94318aa6 6
+  s_b4c55fa120e5f8::t_bd166860ef2efb 46-47,49-68
+  s_b4c55fa120e5f8::t_313c98081edc41 224,226-229,231-299
+  s_a1c4634d9a5807::t_5e94ddfb0d290f 2,4-5,11,28,31-32,35,72,81,133,155,167,203
+  s_b4c55fa120e5f8::t_c02455458b3624 157-163
+  s_11e8cc9d9a45f0::t_639cac70de8208 105-106,109-113,119
+  s_b4c55fa120e5f8::t_072d8d9c849d22 89
+  s_b4c55fa120e5f8::t_f74aeaeee56d0e 104,114-115,117,121-125,129
+src/export/json.lua
+  s_11e8cc9d9a45f0::t_c80ca82714997c 54-78
+src/ui/keys/command.lua
+  s_11e8cc9d9a45f0::t_a202c948c71e11 41
+  s_b4c55fa120e5f8::t_c2d3469f1e3892 5
+  s_b4c55fa120e5f8::t_10eb0598c4a6f7 74-84
+  s_a1c4634d9a5807::t_5b1bba2c4f47a7 1-4,6-40,42-73,85-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "858985fe7e346dc7802b9ae0158bbce1e4b590f3",
+  "prompts": {},
+  "sessions": {
+    "s_11e8cc9d9a45f0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-1bfd2248-5c76-4a9e-8700-58e847ddcb10",
+        "model": "unknown"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_a1c4634d9a5807": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a07d67-e97a-72de-9227-423bcdf87d6f",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_b4c55fa120e5f8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "agent-a3059817-244d-4915-9252-781cba7417f8",
+        "model": "unknown"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    },
+    "s_def6ec3868c4b3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0830d-dde5-753e-92c4-c1d2b247d12d",
+        "model": "solar-pro4"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
