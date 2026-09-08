@@ -1,0 +1,22 @@
+README.md
+  s_ff005374f05ee6::t_6f44f92e35c6b7 148
+  s_ff005374f05ee6::t_44392cb82f5358 156-159,163,166-167,169,171-180,183-186,189-195,197,199-201,205-209,212-219,221-226
+  s_ff005374f05ee6::t_890261fbdd5b39 106-108,110-112,118,120,131
+  s_ff005374f05ee6::t_49775e94ff5af3 109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "bc339dbba6e93bf7ba9f93475ad8ca04dc31b949",
+  "prompts": {},
+  "sessions": {
+    "s_ff005374f05ee6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a08345-10b5-728b-b0ab-9bcc50d26902",
+        "model": "solar-pro4"
+      },
+      "human_author": "Aditya Agarwal <naveenaditya123451@gmail.com>"
+    }
+  }
+}
